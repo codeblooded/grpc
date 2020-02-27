@@ -1,0 +1,165 @@
+// Copyright 2020 gRPC authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/grpc/grpc/testctrl/genproto/testctrl/svc";
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "google/longrunning/operations.proto";
+import "src/proto/grpc/testing/control.proto";
+
+service TestSessions {
+  // Starts a set of test scenarios.
+  //
+  // This is a long-running operation that is managed by the Operations service
+  // on the same server.  The long-running operation will assign a unique
+  // identifier to the session.
+  //
+  // The unique identifier can be used to poll for the session's status and
+  // results.  Streaming is not supported at present.
+  //
+  // It can also be used to cancel while in progress, but cancellations operate
+  // like killing a running process. If they occur while results are being
+  // reported, the persistent storage may receive some but not all of them.
+  //
+  // For the specification of a google.longrunning.Operation message, see the
+  // Long-running AIP at https://aip.dev/151.
+  rpc StartTestSession(StartTestSessionRequest) returns (google.longrunning.Operation) {
+    option (google.longrunning.operation_info) = {
+      response_type: "TestSessionResults"
+      metadata_type: "TestSessionMetadata"
+    };
+  }
+}
+
+message Container {
+  enum Kind {
+    // No kind was specified, so the service will attempt to infer one.
+    //
+    // This inference works as follows:
+    //   1. If this field belongs to the driver_container of the
+    //      StartTestSessionRequest, this kind is inferred to be a driver.
+    //   2. Otherwise, this field is inferred to be a client worker.
+    UNSPECIFIED = 0;
+
+    // Orchestrates the test amongst workers and reports results.
+    DRIVER = 1;
+
+    // Processes incoming requests from client containers.
+    SERVER = 2;
+
+    // Sends outgoing requests to a server container.
+    CLIENT = 3;
+  }
+
+  // The name of the image as it appears in the registry.
+  //
+  // When using GCR, this will likely be a fully-qualified URL. For example,
+  // the name of the Java worker may be "gcr.io/grpc-testing/java_qps_worker".
+  string name = 1;  // [(google.api.field_behavior) = REQUIRED];
+
+  // The kind which assigns the responsibilities of this container.
+  Kind kind = 2;  // [(google.api.field_behavior) = OPTIONAL];
+
+  oneof version_identifier {
+    // The hash assigned to the image.
+    string sha256 = 2;
+
+    // A tag which was explicitly set on the image.
+    //
+    // For example, a developer may explicitly tag an image for repetitive
+    // testing and sharing. They may add a tag with a PR number or version.
+    //
+    // Note: the "latest" tag is automatically set by the registry, and there
+    // are no guarantees that it will point to a specific image. It should be
+    // avoided.
+    string tag = 3;
+  }
+
+  // The number of pods that should be created with this container. For example,
+  // specify 2 replicas on a client container to create 2 clients.
+  //
+  // This field will always be ignored on driver containers. It is ignored on
+  // server containers at present, but may be supported eventually.
+  int32 replicas = 4;
+}
+
+message StartTestSessionRequest {
+  // The test scenarios to run as a part of the test session.
+  repeated grpc.testing.Scenario scenarios = 1;  // [(google.api.field_behavior) = REQUIRED];
+
+  // The container used as the driver which runs the test scenarios.
+  //
+  // If unset, the "latest" tag is used with the standard driver.
+  Container driver_container = 2;  // [(google.api.field_behavior) = OPTIONAL];
+
+  // The containers used as clients.
+  repeated Container worker_containers = 3;  // [(google.api.field_behavior) = REQUIRED];
+
+  // An optional location where the results should be written.
+  oneof result_destination {
+    // The name of the BigQuery table where results should be written.
+    string bq_results_table = 4;  // [(google.api.field_behavior) = OPTIONAL];
+
+    // The fully qualified GCS URI where a results file should be written.
+    string gcs_results_file_uri = 5;  // [(google.api.field_behavior) = OPTIONAL];
+  }
+ }
+
+message TestSessionResults {
+  // The results for each scenario.
+  repeated grpc.testing.ScenarioResult scenario_results = 1;
+
+  // The amount of time that this session lived, including scheduling to
+  // to reporting results.
+  google.protobuf.Duration time_elapsed = 2;
+}
+
+enum TestSessionPhase {
+  // The test session is waiting for idle nodes to schedule pods.
+  QUEUED = 0;
+
+  // Kubernetes is creating and starting the test pods.
+  PROVISIONING = 1;
+
+  // The driver is waiting for the workers to warmup.
+  WARMING_UP = 2;
+
+  // The tests are running and metrics are being collected.
+  TESTING = 3;
+
+  // Results are being saved to persistent storage.
+  REPORTING = 4;
+}
+
+message TestSessionMetadata {
+  // If the session has not terminated, this field provides the current phase
+  // of the test session.
+  TestSessionPhase current_phase = 1;
+
+  // The name of the kubernetes cluster where tests were run.
+  string gke_cluster = 2;
+
+  // The version of the service that is processing this request.
+  string service_version = 3;
+
+  // The time that the server created a test session. This time is not tied to
+  // any specific TestSessionPhase, so it is not indicative of a successful
+  // enqueue or provisioning.
+  google.protobuf.Timestamp create_time = 4;
+}
