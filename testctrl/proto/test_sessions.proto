@@ -47,7 +47,7 @@ service TestSessions {
   }
 }
 
-message Container {
+message Component {
   enum Kind {
     // No kind was specified, so the service will attempt to infer one.
     //
@@ -67,49 +67,42 @@ message Container {
     CLIENT = 3;
   }
 
-  // The name of the image as it appears in the registry.
+  // The container image and a version as it appears in a docker registry.
   //
-  // When using GCR, this will likely be a fully-qualified URL. For example,
-  // the name of the Java worker may be "gcr.io/grpc-testing/java_qps_worker".
-  string name = 1;  // [(google.api.field_behavior) = REQUIRED];
+  // When using GCR, this will likely be a fully-qualified URL and either an
+  // explicit tag or sha256 hash. For example, a Java worker image may be
+  // similar to one of the following:
+  //
+  //   - gcr.io/grpc-testing/java_worker:v3.2.19
+  //   - gcr.io/grpc-testing/java_worker@sha256:82b6360a84c19f23ed7ee9...
+  //
+  // The "latest" tag is automatically set by the registry, and there
+  // are no guarantees that it will point to a specific image. It should be
+  // avoided.
+  string container = 1;  // [(google.api.field_behavior) = REQUIRED];
 
   // The kind which assigns the responsibilities of this container.
   Kind kind = 2;  // [(google.api.field_behavior) = OPTIONAL];
 
-  oneof version_identifier {
-    // The hash assigned to the image.
-    string sha256 = 2;
-
-    // A tag which was explicitly set on the image.
-    //
-    // For example, a developer may explicitly tag an image for repetitive
-    // testing and sharing. They may add a tag with a PR number or version.
-    //
-    // Note: the "latest" tag is automatically set by the registry, and there
-    // are no guarantees that it will point to a specific image. It should be
-    // avoided.
-    string tag = 3;
-  }
-
-  // The number of pods that should be created with this container. For example,
-  // specify 2 replicas on a client container to create 2 clients.
+  // The number of identical components that should be created with these
+  // settings. For example, a "client" component can be configured once and
+  // specify "2" replicas. Two identical versions will be available for tests.
   //
-  // This field will always be ignored on driver containers. It is ignored on
-  // server containers at present, but may be supported eventually.
-  int32 replicas = 4;
+  // This field is ignored for driver components. It may eventually be supported
+  // on server components, but this is not yet available.
+  int32 replicas = 3;
 }
 
 message StartTestSessionRequest {
   // The test scenarios to run as a part of the test session.
   repeated grpc.testing.Scenario scenarios = 1;  // [(google.api.field_behavior) = REQUIRED];
 
-  // The container used as the driver which runs the test scenarios.
-  //
-  // If unset, the "latest" tag is used with the standard driver.
-  Container driver_container = 2;  // [(google.api.field_behavior) = OPTIONAL];
+  // The component which orchestrates running the test scenarios amongst workers.
+  Component driver = 2;  // [(google.api.field_behavior) = OPTIONAL];
 
-  // The containers used as clients.
-  repeated Container worker_containers = 3;  // [(google.api.field_behavior) = REQUIRED];
+  // The components that are required as part of the test. Normally, this will
+  // involve at least one server and a number of clients.
+  repeated Component workers = 3;  // [(google.api.field_behavior) = REQUIRED];
 
   // An optional location where the results should be written.
   oneof result_destination {
@@ -125,41 +118,61 @@ message TestSessionResults {
   // The results for each scenario.
   repeated grpc.testing.ScenarioResult scenario_results = 1;
 
-  // The amount of time that this session lived, including scheduling to
-  // to reporting results.
+  // The amount of time that this session lived, including all actions from
+  // scheduling to termination.
   google.protobuf.Duration time_elapsed = 2;
 }
 
-enum TestSessionPhase {
-  // The test session is waiting for idle nodes to schedule pods.
-  QUEUED = 0;
+message Event {
+  enum Kind {
+    // The event does not conform to the standard lifecycle.
+    UNKNOWN = 0;
 
-  // Kubernetes is creating and starting the test pods.
-  PROVISIONING = 1;
+    // Currently waiting for resources to be provisioned.
+    QUEUE = 1;
 
-  // The driver is waiting for the workers to warmup.
-  WARMING_UP = 2;
+    // Creating, reserving or provisioning resources.
+    PROVISION = 2;
 
-  // The tests are running and metrics are being collected.
-  TESTING = 3;
+    // Currently being executed on the provisioned resources.
+    RUN = 3;
 
-  // Results are being saved to persistent storage.
-  REPORTING = 4;
+    // An error has occurred, preventing further events.
+    ERROR = 4;
+  }
+
+  // The kind of event.
+  Kind kind = 1;
+
+  // The time the event was recorded.
+  google.protobuf.Timestamp time = 2;
+
+  // The component which is the subject of this event, if applicable. When the
+  // event pertains to the entire TestSession, this field will be empty.
+  Component subject = 3;
+
 }
 
 message TestSessionMetadata {
-  // If the session has not terminated, this field provides the current phase
-  // of the test session.
-  TestSessionPhase current_phase = 1;
+  // The latest event for the test session as a whole, assuming it has not been
+  // terminated.
+  Event latest_event = 1;
+
+  // The latest event on all of the components of the test session. This
+  // provides more fine-grained insight when an error has terminated the
+  // test session.
+  Event latest_component_event = 2;
+
+  // The location of a log with all events related to this session.
+  string event_log_uri = 3;
 
   // The name of the kubernetes cluster where tests were run.
-  string gke_cluster = 2;
+  string gke_cluster = 4;
 
   // The version of the service that is processing this request.
-  string service_version = 3;
+  string service_version = 5;
 
-  // The time that the server created a test session. This time is not tied to
-  // any specific TestSessionPhase, so it is not indicative of a successful
-  // enqueue or provisioning.
-  google.protobuf.Timestamp create_time = 4;
+  // The time that the server acknowledged the request to create a test session.
+  google.protobuf.Timestamp create_time = 6;
 }
+
