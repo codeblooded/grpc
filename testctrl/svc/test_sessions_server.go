@@ -19,40 +19,18 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/grpc/grpc/testctrl/kubernetes"
-	svcPb "github.com/grpc/grpc/testctrl/genproto/testctrl/svc"
-	lrPb "google.golang.org/genproto/googleapis/longrunning"
 	"github.com/google/uuid"
+	lrPb "google.golang.org/genproto/googleapis/longrunning"
+	"k8s.io/client-go/kubernetes"
+
+	svcPb "github.com/grpc/grpc/testctrl/genproto/testctrl/svc"
 )
 
-type TestSessionsServer struct{
-	Adapter *kubernetes.Adapter
+type TestSessionsServer struct {
 }
 
 func (t *TestSessionsServer) StartTestSession(ctx context.Context, req *svcPb.StartTestSessionRequest) (*lrPb.Operation, error) {
-	sessionID := uuid.New().String()
-
-	containerImageMap := map[kubernetes.DeploymentRole]string{
-		kubernetes.ClientRole: req.WorkerContainerImage,
-		kubernetes.DriverRole: req.DriverContainerImage,
-		kubernetes.ServerRole: req.WorkerContainerImage,
-	}
-
-	for role, image := range containerImageMap {
-		d := kubernetes.NewDeploymentBuilder(sessionID, role, image).Deployment()
-
-		d, err := t.Adapter.CreateDeployment(context.Background(), d)
-		if err != nil {
-			log.Printf("Deployment of %s for session %s failed: %v", string(role), sessionID, err)
-			// TODO: ADD CLEAN UP LOGIC TO REMOVE OTHER SESSION DEPLOYMENTS
-			break
-		}
-
-		log.Printf("Deployment of %s for session %s succeeded", string(role), sessionID)
-	}
-
 	operation := new(lrPb.Operation)
-	operation.Name = fmt.Sprintf("testSessions/%s", sessionID)
 	operation.Done = false
 	return operation, nil
 }
