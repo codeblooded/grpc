@@ -4,25 +4,29 @@ import (
 	"fmt"
 	"sync"
 
+	"k8s.io/api/core/v1"
+
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
 
 type Resource struct {
-	Name      string
-	Component *types.Component
-	PodStatus v1.PodStatus
-	Unhealthy bool
-	Error     error
+	name      string
+	component *types.Component
+	podStatus v1.PodStatus
+	unhealthy bool
+	done      bool
+	mux       sync.Mutex
+	err       error
 }
 
-func NewResources(cs ...*types.Component) []Resource {
-	var resources []Resource
+func NewResources(cs ...*types.Component) []*Resource {
+	var resources []*Resource
 
 	for _, component := range cs {
-		for i := 0; i < component.Replicas(); i++ {
-			resources = append(resources, Resource{
-				Name:      component.Name(),
-				Component: component,
+		for i := int32(0); i < component.Replicas(); i++ {
+			resources = append(resources, &Resource{
+				name:      component.Name(),
+				component: component,
 			})
 		}
 	}
@@ -30,26 +34,94 @@ func NewResources(cs ...*types.Component) []Resource {
 	return resources
 }
 
+func (r *Resource) Name() string {
+	return r.name
+}
+
+func (r *Resource) Component() *types.Component {
+	return r.component
+}
+
+func (r *Resource) Update(status v1.PodStatus) {
+	r.mux.Lock()
+	defer r.mux.Unlock()
+
+	for _, cstatus := range status.ContainerStatuses {
+		cstate := cstatus.State
+		if cstate.Terminated != nil {
+			r.unhealthy = true
+			r.err = fmt.Errorf("resource %v: docker container has terminated, unable to recover", r)
+		}
+	}
+
+	switch status.Phase {
+	case v1.PodPending:
+		fallthrough
+	case v1.PodRunning:
+		fallthrough
+	case v1.PodSucceeded:
+		r.unhealthy = false
+		r.done = true
+	case v1.PodUnknown:
+		r.unhealthy = true
+		r.err = fmt.Errorf("resource %v: pod has entered an unknown phase: %v", r, status.Message)
+	case v1.PodFailed:
+		r.unhealthy = true
+		r.err = fmt.Errorf("resource %v: pod has failed: %v", r, status.Message)
+	}
+}
+
+func (r *Resource) Error() error {
+	r.mux.Lock()
+	defer r.mux.Unlock()
+	return r.err
+}
+
+func (r *Resource) PodStatus() v1.PodStatus {
+	r.mux.Lock()
+	defer r.mux.Unlock()
+	return r.podStatus
+}
+
+func (r *Resource) Unhealthy() bool {
+	r.mux.Lock()
+	defer r.mux.Unlock()
+	return r.unhealthy
+}
+
+func (r *Resource) Done() bool {
+	r.mux.Lock()
+	defer r.mux.Unlock()
+	return r.done
+}
+
 type Monitor struct {
+	done	    bool
 	unhealthy   bool
-	resources   map[string]Resource
-	errResource Resource
+	resources   map[string]*Resource
+	errResource *Resource
 	mux         sync.Mutex
 }
 
-func (m *Monitor) Get(resourceName string) Resource {
+func NewMonitor() *Monitor {
+	return &Monitor{
+		resources: make(map[string]*Resource),
+	}
+}
+
+func (m *Monitor) Get(resourceName string) *Resource {
 	m.mux.Lock()
 	defer m.mux.Unlock()
 	return m.resources[resourceName]
 }
 
-func (m *Monitor) Add(r Resource) {
+func (m *Monitor) Add(r *Resource) {
 	m.mux.Lock()
 	defer m.mux.Unlock()
-	m.resources[r.Name] = r
+	m.resources[r.Name()] = r
 }
 
-func (m *Monitor) Remove(resourceName string) Resource {
+func (m *Monitor) Remove(resourceName string) {
 	m.mux.Lock()
 	defer m.mux.Unlock()
 	delete(m.resources, resourceName)
@@ -69,8 +141,14 @@ func (m *Monitor) Update(pod *v1.Pod) error {
 		return fmt.Errorf("monitor does not manage resource named '%v'", resourceName)
 	}
 
-	r.PodStatus = pod.Status
-	return m.setHealth(r)
+	r.Update(pod.Status)
+	if r.Unhealthy() {
+		m.unhealthy = true
+		m.errResource = r
+		return r.Error()
+	}
+
+	return nil
 }
 
 func (m *Monitor) Unhealthy() bool {
@@ -79,34 +157,26 @@ func (m *Monitor) Unhealthy() bool {
 	return m.unhealthy
 }
 
-func (m *Monitor) setHealth(r Resource) error {
-	status := r.PodStatus
+func (m *Monitor) Error() error {
+	m.mux.Lock()
+	defer m.mux.Unlock()
 
-	for _, cstatus := range status.ContainerStatuses {
-		cstate := cstatus.State
-		if cstate.Terminated != nil {
-			r.Unhealthy = true
-			r.Error = fmt.Errorf("resource %v: docker container has terminated, unable to recover", r)
+	if m.errResource != nil {
+		return m.errResource.Error()
+	}
+
+	return nil
+}
+
+func (m *Monitor) Done() bool {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+
+	for _, r := range m.resources {
+		if !r.Done() {
+			return false
 		}
 	}
 
-	switch status.Phase {
-	case v1.PodPending:
-		fallthrough
-	case v1.PodRunning:
-		fallthrough
-	case v1.PodSucceeded:
-		r.Unhealthy = false
-	case v1.PodUnknown:
-		r.Unhealthy = true
-		r.Error = fmt.Errorf("resource %v: pod has entered an unknown phase: %v", r, status.Message)
-	case v1.PodFailed:
-		r.Unhealthy = true
-		r.Error = fmt.Errorf("resource %v: pod has failed: %v", r, status.Message)
-	}
-
-	if !m.unhealthy && r.Unhealthy {
-		m.unhealthy = true
-		m.errResource = r
-	}
+	return true
 }

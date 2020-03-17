@@ -5,8 +5,8 @@ import (
 	"log"
 	"sync"
 
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/workqueue"
 
@@ -32,6 +32,7 @@ func NewController(clientset *kubernetes.Clientset) *Controller {
 	c := &Controller{
 		clientset: clientset,
 		queue:     workqueue.New(),
+		monitors:  make(map[string]*Monitor),
 	}
 	return c
 }
@@ -125,8 +126,8 @@ func (c *Controller) startExecutors() {
 					return
 				}
 
-				session = si.(*types.Session)
-				monitor = &Monitor{}
+				session := si.(*types.Session)
+				monitor := NewMonitor()
 				c.mux.Lock()
 				c.monitors[session.Name()] = monitor
 				c.mux.Unlock()
@@ -171,6 +172,8 @@ func (c *Controller) execute(info *executorInfo) error {
 	if err := c.monitorRun(info); err != nil {
 		return fmt.Errorf("error resulted in termination: %v", err)
 	}
+
+	return nil
 }
 
 // deploy creates all kubernetes resources for a component by submitting a spec.
@@ -185,27 +188,28 @@ func (c *Controller) deploy(info *executorInfo, co *types.Component) error {
 }
 
 func (c *Controller) provision(info *executorInfo) error {
-	drivers := NewResources(info.Driver())
+	drivers := NewResources(info.session.Driver())
 	if count := len(drivers); count != 1 {
 		return fmt.Errorf("sessions must have exactly 1 driver, but %v drivers were specified", count)
 	}
 	driver := drivers[0]
 
-	servers := NewResources(info.ServerWorkers())
+	servers := NewResources(info.session.ServerWorkers()...)
 	if count := len(servers); count != 1 {
 		return fmt.Errorf("sessions must have exactly 1 server component, but got %v", count)
 	}
 	server := servers[0]
 
-	clients := NewResources(info.ClientWorkers())
+	clients := NewResources(info.session.ClientWorkers()...)
 
-	workers := []Resource{server, clients...}
-	var workerIPs string
+	workers := []*Resource{server}
+	workers = append(workers, clients...)
+	var workerIPs []string
 
 	for _, worker := range workers {
-		if err := c.deploy(info, worker); err != nil {
-			return err
-		}
+	//	if err := c.deploy(info, worker); err != nil {
+	//		return err
+	//	}
 
 		for {
 			if worker.Unhealthy() {
@@ -217,15 +221,16 @@ func (c *Controller) provision(info *executorInfo) error {
 					worker, info.monitor.Error())
 			}
 
-			if ip := worker.PodStatus.PodIP; len(ip) > 0 {
+			if ip := worker.PodStatus().PodIP; len(ip) > 0 {
 				workerIPs = append(workerIPs, ip)
 			}
 		}
 	}
 
-	if err := c.deploy(info, driver); err != nil {
-		return fmt.Errorf("%v could not be deployed: %v", driver, err)
-	}
+	_ = driver
+//	if err := c.deploy(info, driver); err != nil {
+//		return fmt.Errorf("%v could not be deployed: %v", driver, err)
+//	}
 
 	return nil
 }
