@@ -90,8 +90,9 @@ func (c *Controller) startWatcher() error {
 				sessionName := pod.Labels["session-name"]
 
 				c.mux.Lock()
-				monitor := c.monitors[sessionName]
-				monitor.Update(pod)
+				if monitor := c.monitors[sessionName]; monitor != nil {
+					monitor.Update(pod)
+				}
 				c.mux.Unlock()
 			case <-c.quitWatcher:
 				log.Println("Watcher is terminating gracefully")
@@ -207,11 +208,16 @@ func (c *Controller) provision(info *executorInfo) error {
 	var workerIPs []string
 
 	for _, worker := range workers {
-	//	if err := c.deploy(info, worker); err != nil {
-	//		return err
-	//	}
+		info.monitor.Add(worker)
+
+		if err := c.deploy(info, worker.Component()); err != nil {
+			return err
+		}
+
+		var assignedIP bool
 
 		for {
+
 			if worker.Unhealthy() {
 				return fmt.Errorf("%v terminated due to unhealthy status: %v", worker, worker.Error())
 			}
@@ -221,16 +227,19 @@ func (c *Controller) provision(info *executorInfo) error {
 					worker, info.monitor.Error())
 			}
 
-			if ip := worker.PodStatus().PodIP; len(ip) > 0 {
-				workerIPs = append(workerIPs, ip)
+			if !assignedIP {
+				if ip := worker.PodStatus().PodIP; len(ip) > 0 {
+					assignedIP = true
+					workerIPs = append(workerIPs, ip)
+					log.Printf("%v assigned IP: %v", worker, ip)
+				}
 			}
 		}
 	}
 
-	_ = driver
-//	if err := c.deploy(info, driver); err != nil {
-//		return fmt.Errorf("%v could not be deployed: %v", driver, err)
-//	}
+	if err := c.deploy(info, driver.Component()); err != nil {
+		return fmt.Errorf("%v could not be deployed: %v", driver, err)
+	}
 
 	return nil
 }
