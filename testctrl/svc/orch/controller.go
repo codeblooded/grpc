@@ -3,9 +3,8 @@ package orch
 import (
 	"fmt"
 	"log"
-	"time"
+	"sync"
 
-	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
@@ -22,6 +21,8 @@ type Controller struct {
 	clientset   *kubernetes.Clientset
 	queue       workqueue.Interface
 	delegator   Delegator
+	monitors    map[string]*Monitor
+	mux         sync.Mutex
 	quitWatcher chan struct{}
 }
 
@@ -30,7 +31,7 @@ type Controller struct {
 func NewController(clientset *kubernetes.Clientset) *Controller {
 	c := &Controller{
 		clientset: clientset,
-		queue: workqueue.New(),
+		queue:     workqueue.New(),
 	}
 	return c
 }
@@ -84,8 +85,13 @@ func (c *Controller) startWatcher() error {
 		for {
 			select {
 			case event := <-watcherChan:
-				log.Printf("Watcher received an event: %v on pod: %v", event.Type, event.Object.(*v1.Pod).Name)
-				c.proxy(event)
+				pod := event.Object.(*v1.Pod)
+				sessionName := pod.Labels["session-name"]
+
+				c.mux.Lock()
+				monitor := c.monitors[sessionName]
+				monitor.Update(pod)
+				c.mux.Unlock()
 			case <-c.quitWatcher:
 				log.Println("Watcher is terminating gracefully")
 				watcher.Stop()
@@ -101,106 +107,151 @@ func (c *Controller) startWatcher() error {
 // session at a time.
 func (c *Controller) startExecutors() {
 	for i := 0; i < executorCount; i++ {
-		index := i // define copy to prevent race with i++
-		eventChan := make(chan watch.Event)
-		log.Printf("Creating and starting executor %v/%v", index, executorCount)
+		info := &executorInfo{index: i}
+		log.Printf("Creating and starting executor %v/%v", info.index, executorCount)
+
 		go func() {
-			log.Printf("Executor[%v] waiting for healthy broadcast from watcher", index)
+			log.Printf("Executor[%v] waiting for healthy broadcast from watcher", info.index)
 
 			for {
-				log.Printf("Executor[%v] is waiting for a session", index)
+				// start with clean state
+				info.session = nil
+				info.monitor = nil
+
+				log.Printf("%v: waiting for a session", info)
 				si, quit := c.queue.Get()
 				if quit {
-					log.Printf("Executor[%v] is terminating gracefully", index)
+					log.Printf("%v: terminating gracefully", info)
 					return
 				}
 
-				s := si.(*types.Session)
-				log.Printf("Executor[%v] starting work on %v", index, s.ResourceName())
-				c.assign(s, eventChan)
+				session = si.(*types.Session)
+				monitor = &Monitor{}
+				c.mux.Lock()
+				c.monitors[session.Name()] = monitor
+				c.mux.Unlock()
 
-				c.execute(s, eventChan)
-
-				c.deassign(s)
-				c.queue.Done(s)
-				log.Printf("Executor[%v] completed work on %v", index, s.ResourceName())
+				log.Printf("%v: starting work on %v", info, session.ResourceName())
+				info.session = session
+				info.monitor = monitor
+				if err := c.execute(info); err != nil {
+					log.Printf("%v: failed: %v", info, err)
+				}
+				c.queue.Done(session)
+				log.Printf("%v: finished work on %v", info, session.ResourceName())
 			}
 		}()
 	}
 }
 
-// assign tells the controller to pass all kubernetes pod events related to a specific session
-// through the specified channel.
-func (c *Controller) assign(s *types.Session, eventChan chan watch.Event) {
-	c.delegator.Set(s.Name(), &Denoiser{Channel: eventChan})
+type executorInfo struct {
+	index   int
+	session *types.Session
+	monitor *Monitor
 }
 
-// deassign tells the controller to stop passing kubernetes pod events for a specific session
-// through any channel.
-func (c *Controller) deassign(s *types.Session) {
-	c.delegator.Unset(s.Name())
+func (ei *executorInfo) String() string {
+	message := fmt.Sprintf("executor[%v]", ei.index)
+
+	if ei.session != nil {
+		message = message + fmt.Sprintf(" (session: %v)", ei.session.Name())
+	}
+
+	return message
 }
 
 // execute performs the provision, monitoring and teardown of a session's resources.
-func (c *Controller) execute(s *types.Session, eventChan chan watch.Event) {
-	c.deploy(s, s.Driver())
-	c.teardown(s, s.Driver(), false)
+func (c *Controller) execute(info *executorInfo) error {
+	defer c.teardown(info)
+
+	if err := c.provision(info); err != nil {
+		return fmt.Errorf("failed to provision resources: %v", err)
+	}
+
+	if err := c.monitorRun(info); err != nil {
+		return fmt.Errorf("error resulted in termination: %v", err)
+	}
 }
 
 // deploy creates all kubernetes resources for a component by submitting a spec.
-func (c *Controller) deploy(s *types.Session, co *types.Component) error {
-	log.Printf("Deploying %v/%v [%v]", s.ResourceName(), co.ResourceName(), co.Kind())
-	depl := NewSpecBuilder(s, co).Deployment()
+func (c *Controller) deploy(info *executorInfo, co *types.Component) error {
+	log.Printf("Deploying %v/%v [%v]", info.session.ResourceName(), co.ResourceName(), co.Kind())
+	depl := NewSpecBuilder(info.session, co).Deployment()
 	if _, err := c.clientset.AppsV1().Deployments(v1.NamespaceDefault).Create(depl); err != nil {
-		return fmt.Errorf("unable to deploy %v/%v [%v]: %v", s.ResourceName(), co.ResourceName(),
+		return fmt.Errorf("unable to deploy %v/%v [%v]: %v", info.session.ResourceName(), co.ResourceName(),
 			co.Kind(), err)
 	}
 	return nil
 }
 
-// teardown deletes all kubernetes resources for a component. If propagate is true, it will delete
-// all kubernetes resources for the entire session.
-func (c *Controller) teardown(s *types.Session, co *types.Component, propagate bool) error {
-	var labels string
+func (c *Controller) provision(info *executorInfo) error {
+	drivers := NewResources(info.Driver())
+	if count := len(drivers); count != 1 {
+		return fmt.Errorf("sessions must have exactly 1 driver, but %v drivers were specified", count)
+	}
+	driver := drivers[0]
 
-	if propagate {
-		log.Printf("Deleting all component deployments for %v", s.ResourceName())
-		labels = fmt.Sprintf("session-name=%v", s.Name())
-	} else {
-		log.Printf("Deleting %v/%v [%v]", s.ResourceName(), co.ResourceName(), co.Kind())
-		labels = fmt.Sprintf("component-name=%v", co.Name())
+	servers := NewResources(info.ServerWorkers())
+	if count := len(servers); count != 1 {
+		return fmt.Errorf("sessions must have exactly 1 server component, but got %v", count)
+	}
+	server := servers[0]
+
+	clients := NewResources(info.ClientWorkers())
+
+	workers := []Resource{server, clients...}
+	var workerIPs string
+
+	for _, worker := range workers {
+		if err := c.deploy(info, worker); err != nil {
+			return err
+		}
+
+		for {
+			if worker.Unhealthy() {
+				return fmt.Errorf("%v terminated due to unhealthy status: %v", worker, worker.Error())
+			}
+
+			if info.monitor.Unhealthy() {
+				return fmt.Errorf("terminating due to error in available test dependency: %v",
+					worker, info.monitor.Error())
+			}
+
+			if ip := worker.PodStatus.PodIP; len(ip) > 0 {
+				workerIPs = append(workerIPs, ip)
+			}
+		}
 	}
 
-	delForeground := metav1.DeletePropagationForeground
-
-	delOpts := &metav1.DeleteOptions{
-		PropagationPolicy: &delForeground,
-	}
-
-	listOpts := metav1.ListOptions{
-		LabelSelector: labels,
-	}
-
-	err := c.clientset.AppsV1().Deployments(v1.NamespaceDefault).DeleteCollection(delOpts, listOpts)
-	if err != nil {
-		return fmt.Errorf("failed to delete with labels '%v' in %v: %v", labels, s.ResourceName(), err)
+	if err := c.deploy(info, driver); err != nil {
+		return fmt.Errorf("%v could not be deployed: %v", driver, err)
 	}
 
 	return nil
 }
 
-// proxy finds the session for an event and sends the event through the assigned channel.
-func (c *Controller) proxy(e watch.Event) {
-	pod := e.Object.(*v1.Pod)
-	sessionName := pod.Labels["session-name"]
-	if len(sessionName) != 0 {
-		denoiser := c.delegator.Get(sessionName)
-		if denoiser == nil {
-			log.Printf("[WARNING] ORPHAN SESSION POD, REQUIRES MANUAL CLEANUP: %v", pod.Name)
-			return
+func (c *Controller) monitorRun(info *executorInfo) error {
+	for {
+		if info.monitor.Unhealthy() {
+			return fmt.Errorf("terminating due to unhealthy state: %v", info.monitor.Error())
 		}
 
-		denoiser.Send(e)
+		if info.monitor.Done() {
+			return nil
+		}
 	}
+}
+
+func (c *Controller) teardown(info *executorInfo) error {
+	listOpts := metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("session-name=%v", info.session.Name()),
+	}
+
+	err := c.clientset.AppsV1().Deployments(v1.NamespaceDefault).DeleteCollection(&metav1.DeleteOptions{}, listOpts)
+	if err != nil {
+		return fmt.Errorf("failed to delete kubernetes resources")
+	}
+
+	return nil
 }
 
