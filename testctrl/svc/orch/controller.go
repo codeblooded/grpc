@@ -18,13 +18,14 @@ import (
 // executorCount specifies the maximum number of sessions that should be processed concurrently.
 const executorCount = 1
 
-// Controller manages active and idle sessions, as well as, communications with the Kubernetes API.
+// Controller orchestrates active and idle sessions by managing a session queue, executors and
+// interactions with kubernetes.
 type Controller struct {
 	clientset   *kubernetes.Clientset
 	queue       workqueue.Interface
-	delegator   Delegator
 	monitors    map[string]*Monitor
 	mux         sync.Mutex
+	wg	    sync.WaitGroup
 	quitWatcher chan struct{}
 }
 
@@ -57,12 +58,32 @@ func (c *Controller) Start() error {
 	return nil
 }
 
-// Stop safely terminates all goroutines spawned by the call to Start. It returns immediately, but
-// it allows the active sessions to finish before terminating goroutines.
-func (c *Controller) Stop() error {
+// Stop attempts to terminate all orchestration goroutines spawned by a call to Start. It waits for
+// executors to exit. Then, it kills the kubernetes watcher.
+//
+// If the timeout is reached before executors exit, an error is returned. The kubernetes watcher is
+// still terminated. Any sessions running on the unterminated executors will likely fail.
+func (c *Controller) Stop(timeout time.Duration) error {
+	var err error
+
 	c.queue.ShutDown()
+
+	executorsDone := make(chan struct{})
+	go func() {
+		c.wg.Wait()
+		close(executorsDone)
+	}()
+
+	select {
+	case <-executorsDone:
+		glog.Infof("controller: executors safely exited")
+	case <-time.After(timeout):
+		glog.Warning("controller: unable to wait for executors to safely exit, timed out")
+		err = fmt.Errorf("executors did not safely exit before timeout")
+	}
+
 	close(c.quitWatcher)
-	return nil
+	return err
 }
 
 // startWatcher creates a goroutine which watches for all kubernetes pod events in the cluster.
@@ -117,6 +138,8 @@ func (c *Controller) startExecutors() {
 		glog.Infof("controller: creating and starting executor[%v]", info.index)
 
 		go func() {
+			wg.Add(1)
+
 			for {
 				// start with clean state
 				info.session = nil
@@ -126,6 +149,7 @@ func (c *Controller) startExecutors() {
 				si, quit := c.queue.Get()
 				if quit {
 					glog.Infof("executor[%v]: terminating gracefully", info.index)
+					wg.Done()
 					return
 				}
 
@@ -182,6 +206,8 @@ func (c *Controller) deploy(info *executorInfo, co *types.Component) error {
 	return nil
 }
 
+// provision creates kubernetes objects for every component, ensuring that they are healthy or
+// returning an error.
 func (c *Controller) provision(info *executorInfo) error {
 	drivers := NewResources(info.session.Driver())
 	if count := len(drivers); count != 1 {
@@ -260,6 +286,9 @@ func (c *Controller) provision(info *executorInfo) error {
 	return nil
 }
 
+// monitorRun watches for an unhealthy status until all component kubernetes objects have finished
+// gracefully. If it encounters an unhealthy status, it immediately returns an error. If components
+// finish gracefully, it returns nil.
 func (c *Controller) monitorRun(info *executorInfo) error {
 	for {
 		if info.monitor.Unhealthy() {
@@ -273,6 +302,8 @@ func (c *Controller) monitorRun(info *executorInfo) error {
 	}
 }
 
+// teardown deletes all component kubernetes objects for the active session. It proxies any error
+// from kubernetes in the return value.
 func (c *Controller) teardown(info *executorInfo) error {
 	listOpts := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("session-name=%v", info.session.Name()),
