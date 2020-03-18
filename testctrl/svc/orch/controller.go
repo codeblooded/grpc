@@ -217,8 +217,8 @@ func (c *Controller) provision(info *executorInfo) error {
 			}
 
 			if info.monitor.Unhealthy() {
-				return fmt.Errorf("session %v terminating due to error in %v component: %v",
-					info.session.Name(), info.monitor.ErrResource().Name(), info.monitor.Error())
+				return fmt.Errorf("provision cancelled due to component %v failure: %v",
+					info.monitor.ErrResource().Name(), info.monitor.Error())
 			}
 
 			if !assignedIP {
@@ -228,11 +228,33 @@ func (c *Controller) provision(info *executorInfo) error {
 					glog.V(2).Infof("component %v was assigned IP address %v", worker.Name(), ip)
 				}
 			}
+
+			if worker.Ready() {
+				glog.V(1).Infof("component %v was successfully provisioned and is ready", worker.Name())
+				break
+			}
 		}
 	}
 
+	info.monitor.Add(driver)
 	if err := c.deploy(info, driver.Component()); err != nil {
 		return fmt.Errorf("driver component %v could not be deployed with error: %v", driver.Name(), err)
+	}
+
+	for {
+		if driver.Unhealthy() {
+			return fmt.Errorf("driver component %v terminated due to unhealthy status: %v", driver.Name(), driver.Error())
+		}
+
+		if info.monitor.Unhealthy() {
+			return fmt.Errorf("provision cancelled due to component %v failure: %v",
+				info.monitor.ErrResource().Name(), info.monitor.Error())
+		}
+
+		if driver.Ready() {
+			glog.V(1).Infof("driver component %v was successfully provisioned and is ready", driver.Name())
+			break
+		}
 	}
 
 	return nil
@@ -263,4 +285,3 @@ func (c *Controller) teardown(info *executorInfo) error {
 
 	return nil
 }
-

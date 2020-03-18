@@ -14,6 +14,7 @@ type Resource struct {
 	name      string
 	component *types.Component
 	podStatus v1.PodStatus
+	ready     bool
 	unhealthy bool
 	done      bool
 	mux       sync.Mutex
@@ -62,6 +63,10 @@ func (r *Resource) Update(status v1.PodStatus) {
 				return
 			}
 		}
+
+		if cstatus.State.Running != nil {
+			r.ready = true
+		}
 	}
 
 	switch status.Phase {
@@ -79,6 +84,12 @@ func (r *Resource) Update(status v1.PodStatus) {
 		r.unhealthy = true
 		r.err = fmt.Errorf("pod for component %v has failed with message: %v", r.Name(), status.Message)
 	}
+}
+
+func (r *Resource) Ready() bool {
+	r.mux.Lock()
+	defer r.mux.Unlock()
+	return r.ready
 }
 
 func (r *Resource) Error() error {
