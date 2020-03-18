@@ -80,6 +80,12 @@ func (m *Monitor) Error() error {
 	return nil
 }
 
+func (m *Monitor) ErrResource() *Resource {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	return m.errResource
+}
+
 func (m *Monitor) Done() bool {
 	m.mux.Lock()
 	defer m.mux.Unlock()

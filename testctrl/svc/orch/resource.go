@@ -51,14 +51,14 @@ func (r *Resource) Update(status v1.PodStatus) {
 		cstate := cstatus.State
 		if cstatus.State.Terminated != nil || cstatus.LastTerminationState.Terminated != nil {
 			r.unhealthy = true
-			r.err = fmt.Errorf("resource %v: docker container has terminated, unable to recover", r)
+			r.err = fmt.Errorf("docker container has terminated for component %v, unable to recover", r.Name())
 			return
 		}
 
 		if waitingState := cstate.Waiting; waitingState != nil {
 			if strings.Compare("CrashLoopBackOff", waitingState.Reason) == 0 {
 				r.unhealthy = true
-				r.err = fmt.Errorf("resource %v: docker container has entered crash loop", r)
+				r.err = fmt.Errorf("docker container has entered a crash loop for component %v", r.Name())
 				return
 			}
 		}
@@ -74,10 +74,10 @@ func (r *Resource) Update(status v1.PodStatus) {
 		r.done = true
 	case v1.PodUnknown:
 		r.unhealthy = true
-		r.err = fmt.Errorf("resource %v: pod has entered an unknown phase: %v", r, status.Message)
+		r.err = fmt.Errorf("pod for component %v has entered an unknown phase with message: %v", r.Name(), status.Message)
 	case v1.PodFailed:
 		r.unhealthy = true
-		r.err = fmt.Errorf("resource %v: pod has failed: %v", r, status.Message)
+		r.err = fmt.Errorf("pod for component %v has failed with message: %v", r.Name(), status.Message)
 	}
 }
 
