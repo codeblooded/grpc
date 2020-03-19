@@ -35,7 +35,7 @@ func main() {
 	if err := c.Start(); err != nil {
 		panic(err)
 	}
-	defer c.Stop()
+	defer c.Stop(*timeout)
 
 	go func() {
 		for i := 0; i < *count; i++ {

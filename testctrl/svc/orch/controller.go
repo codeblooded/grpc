@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -138,7 +139,7 @@ func (c *Controller) startExecutors() {
 		glog.Infof("controller: creating and starting executor[%v]", info.index)
 
 		go func() {
-			wg.Add(1)
+			c.wg.Add(1)
 
 			for {
 				// start with clean state
@@ -149,7 +150,7 @@ func (c *Controller) startExecutors() {
 				si, quit := c.queue.Get()
 				if quit {
 					glog.Infof("executor[%v]: terminating gracefully", info.index)
-					wg.Done()
+					c.wg.Done()
 					return
 				}
 
@@ -172,6 +173,7 @@ func (c *Controller) startExecutors() {
 	}
 }
 
+// executorInfo contains information that is used by an executor goroutine.
 type executorInfo struct {
 	index   int
 	session *types.Session
@@ -209,21 +211,21 @@ func (c *Controller) deploy(info *executorInfo, co *types.Component) error {
 // provision creates kubernetes objects for every component, ensuring that they are healthy or
 // returning an error.
 func (c *Controller) provision(info *executorInfo) error {
-	drivers := NewResources(info.session.Driver())
+	drivers := NewObjects(info.session.Driver())
 	if count := len(drivers); count != 1 {
 		return fmt.Errorf("expected exactly 1 driver, but got %v drivers", count)
 	}
 	driver := drivers[0]
 
-	servers := NewResources(info.session.ServerWorkers()...)
+	servers := NewObjects(info.session.ServerWorkers()...)
 	if count := len(servers); count != 1 {
 		return fmt.Errorf("expected exactly 1 server, but got %v servers", count)
 	}
 	server := servers[0]
 
-	clients := NewResources(info.session.ClientWorkers()...)
+	clients := NewObjects(info.session.ClientWorkers()...)
 
-	workers := []*Resource{server}
+	workers := []*Object{server}
 	workers = append(workers, clients...)
 	var workerIPs []string
 
@@ -238,13 +240,13 @@ func (c *Controller) provision(info *executorInfo) error {
 
 		for {
 
-			if worker.Unhealthy() {
+			if worker.Health() == Unhealthy {
 				return fmt.Errorf("component %v terminated due to unhealthy status: %v", worker.Name(), worker.Error())
 			}
 
 			if info.monitor.Unhealthy() {
 				return fmt.Errorf("provision cancelled due to component %v failure: %v",
-					info.monitor.ErrResource().Name(), info.monitor.Error())
+					info.monitor.ErrObject().Name(), info.monitor.Error())
 			}
 
 			if !assignedIP {
@@ -255,7 +257,7 @@ func (c *Controller) provision(info *executorInfo) error {
 				}
 			}
 
-			if worker.Ready() {
+			if worker.Health() == Healthy {
 				glog.V(1).Infof("component %v was successfully provisioned and is ready", worker.Name())
 				break
 			}
@@ -268,16 +270,16 @@ func (c *Controller) provision(info *executorInfo) error {
 	}
 
 	for {
-		if driver.Unhealthy() {
+		if driver.Health() == Unhealthy {
 			return fmt.Errorf("driver component %v terminated due to unhealthy status: %v", driver.Name(), driver.Error())
 		}
 
 		if info.monitor.Unhealthy() {
 			return fmt.Errorf("provision cancelled due to component %v failure: %v",
-				info.monitor.ErrResource().Name(), info.monitor.Error())
+				info.monitor.ErrObject().Name(), info.monitor.Error())
 		}
 
-		if driver.Ready() {
+		if driver.Health() == Healthy {
 			glog.V(1).Infof("driver component %v was successfully provisioned and is ready", driver.Name())
 			break
 		}
@@ -293,7 +295,7 @@ func (c *Controller) monitorRun(info *executorInfo) error {
 	for {
 		if info.monitor.Unhealthy() {
 			return fmt.Errorf("component %v is unhealthy, terminating with error: %v",
-				info.monitor.ErrResource().Name(), info.monitor.Error())
+				info.monitor.ErrObject().Name(), info.monitor.Error())
 		}
 
 		if info.monitor.Done() {
@@ -316,3 +318,4 @@ func (c *Controller) teardown(info *executorInfo) error {
 
 	return nil
 }
+
