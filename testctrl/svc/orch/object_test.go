@@ -93,9 +93,9 @@ func TestObjectUpdate(t *testing.T) {
 	}
 
 	cases := []struct {
-		phase           v1.PodPhase
-		cstatus         containerState
-		expectedHealth  Health
+		phase          v1.PodPhase
+		cstatus        containerState
+		expectedHealth Health
 	}{
 		// pod pending cases
 		{v1.PodPending, terminatedState, Unhealthy},

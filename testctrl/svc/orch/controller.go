@@ -26,7 +26,7 @@ type Controller struct {
 	queue       workqueue.Interface
 	monitors    map[string]*Monitor
 	mux         sync.Mutex
-	wg	    sync.WaitGroup
+	wg          sync.WaitGroup
 	quitWatcher chan struct{}
 }
 
@@ -318,4 +318,3 @@ func (c *Controller) teardown(info *executorInfo) error {
 
 	return nil
 }
-

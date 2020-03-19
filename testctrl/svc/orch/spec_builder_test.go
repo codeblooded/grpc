@@ -28,7 +28,7 @@ func TestSpecBuilderContainers(t *testing.T) {
 
 func TestSpecBuilderContainerPorts(t *testing.T) {
 	cases := []struct {
-		kind types.ComponentKind
+		kind  types.ComponentKind
 		ports []int32
 	}{
 		{types.DriverComponent, []int32{driverPort}},
@@ -57,7 +57,6 @@ func TestSpecBuilderContainerPorts(t *testing.T) {
 		}
 	}
 }
-
 
 func TestSpecBuilderDeploymentSpec(t *testing.T) {
 	// Check that replicas are properly set
@@ -142,4 +141,3 @@ func TestSpecBuilderObjectMeta(t *testing.T) {
 		t.Errorf("SpecBuilder ObjectMeta did not set the K8s resource name to the component name; expected '%s' but got '%s'", componentName, resourceName)
 	}
 }
-

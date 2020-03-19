@@ -7,16 +7,24 @@ import (
 
 	"k8s.io/api/core/v1"
 
-	"github.com/golang/glog"
-
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
 
+// ErrorContainerTerminated indicates that an object's docker container has terminated.
 var ErrorContainerTerminated error
+
+// ErrorContainerTerminating indicates that an object's docker container has begun terminating.
 var ErrorContainerTerminating error
+
+// ErrorContainerCrashed indicates that an object's docker container is in the waiting state, but
+// a crash has been detected.
 var ErrorContainerCrashed error
+
+// ErrorPodFailed indicates that kubernetes marked an object's pod as failed.
 var ErrorPodFailed error
 
+// init, although normally discouraged, is only used to initialize the error variables, since they
+// require the Errorf function from the fmt package.
 func init() {
 	ErrorContainerTerminated = fmt.Errorf("container terminated")
 	ErrorContainerTerminating = fmt.Errorf("container terminating")
@@ -107,10 +115,6 @@ func (o *Object) Update(status v1.PodStatus) {
 
 	o.podStatus = status
 	o.err = err
-
-	if o.component.Kind() == types.DriverComponent {
-	glog.V(5).Infof("driver phase=%v health=%v err=%v", phase, o.health, o.err)
-	}
 }
 
 // Health returns the health value that is currently affiliated with the object.
@@ -118,6 +122,13 @@ func (o *Object) Health() Health {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 	return o.health
+}
+
+// Unhealthy returns true if the object's health is marked as Unhealthy or Failed.
+func (o *Object) Unhealthy() bool {
+	o.mux.Lock()
+	defer o.mux.Unlock()
+	return o.health == Unhealthy || o.health == Failed
 }
 
 // Error returns any error that caused the object to be unhealthy.
@@ -134,59 +145,81 @@ func (o *Object) PodStatus() v1.PodStatus {
 	return o.podStatus
 }
 
+// containerState represents the current status of the single container in an object's pod. This
+// does not have a 1:1 correlation with kubernetes, because it flattens their hierarchical
+// structure.
 type containerState int
 
 const (
+	// containerStateUnknown means that the docker container state objects did not conform to
+	// any of the other containerState constants.
 	containerStateUnknown containerState = iota
+
+	// containerStateTerminated means the docker container has a non-nil terminating state
+	// object specified as a previous state.
 	containerStateTerminated
+
+	// containerStateTerminating means the docker container has a non-nil terminating state
+	// bject specified as the current state.
 	containerStateTerminating
+
+	// containerStateWaiting means the docker container is in the waiting state; however, a
+	// crash has not been detected.
 	containerStateWaiting
+
+	// containerStateCrashWaiting means the docker container is marked in a waiting state, but
+	// the reason is "CrashLoopBackOff". This means that there was a crash in the container,
+	// and kubernetes will likely try to restart it.
 	containerStateCrashWaiting
+
+	// containerStateRunning means the docker container is marked in a running state.
 	containerStateRunning
 )
 
-var phaseStateMap = map[v1.PodPhase]map[containerState]Health {
+// phaseStateMap is a table that maps a kubernetes pod phase and the state of its container to a
+// health value. For example, a PodRunning phase and a docker container state of
+// containerStateCrashWaiting should map to Unhealthy.
+var phaseStateMap = map[v1.PodPhase]map[containerState]Health{
 	v1.PodPending: map[containerState]Health{
-		containerStateUnknown: Unknown,
+		containerStateUnknown:      Unknown,
 		containerStateCrashWaiting: Unhealthy,
-		containerStateTerminated: Unhealthy,
-		containerStateTerminating: Unhealthy,
+		containerStateTerminated:   Unhealthy,
+		containerStateTerminating:  Unhealthy,
 	},
 
 	v1.PodRunning: map[containerState]Health{
-		containerStateUnknown: Unhealthy,
-		containerStateRunning: Healthy,
-		containerStateWaiting: Unhealthy,
+		containerStateUnknown:      Unhealthy,
+		containerStateRunning:      Healthy,
+		containerStateWaiting:      Unhealthy,
 		containerStateCrashWaiting: Unhealthy,
-		containerStateTerminated: Unhealthy,
-		containerStateTerminating: Unhealthy,
+		containerStateTerminated:   Unhealthy,
+		containerStateTerminating:  Unhealthy,
 	},
 
 	v1.PodSucceeded: map[containerState]Health{
-		containerStateUnknown: Done,
-		containerStateRunning: Done,
-		containerStateWaiting: Done,
+		containerStateUnknown:      Done,
+		containerStateRunning:      Done,
+		containerStateWaiting:      Done,
 		containerStateCrashWaiting: Failed,
-		containerStateTerminated: Done,
-		containerStateTerminating: Done,
+		containerStateTerminated:   Done,
+		containerStateTerminating:  Done,
 	},
 
 	v1.PodFailed: map[containerState]Health{
-		containerStateUnknown: Failed,
-		containerStateRunning: Failed,
-		containerStateWaiting: Failed,
+		containerStateUnknown:      Failed,
+		containerStateRunning:      Failed,
+		containerStateWaiting:      Failed,
 		containerStateCrashWaiting: Failed,
-		containerStateTerminated: Failed,
-		containerStateTerminating: Failed,
+		containerStateTerminated:   Failed,
+		containerStateTerminating:  Failed,
 	},
 
 	v1.PodUnknown: map[containerState]Health{
-		containerStateUnknown: Unknown,
-		containerStateRunning: Unhealthy,
-		containerStateWaiting: Unhealthy,
+		containerStateUnknown:      Unknown,
+		containerStateRunning:      Unhealthy,
+		containerStateWaiting:      Unhealthy,
 		containerStateCrashWaiting: Unhealthy,
-		containerStateTerminated: Unhealthy,
-		containerStateTerminating: Unhealthy,
+		containerStateTerminated:   Unhealthy,
+		containerStateTerminating:  Unhealthy,
 	},
 }
-
