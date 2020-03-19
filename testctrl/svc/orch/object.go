@@ -10,6 +10,18 @@ import (
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
 
+var ErrorContainerTerminated error
+var ErrorContainerTerminating error
+var ErrorContainerCrashed error
+var ErrorPodFailed error
+
+func init() {
+	ErrorContainerTerminated = fmt.Errorf("container terminated")
+	ErrorContainerTerminating = fmt.Errorf("container terminating")
+	ErrorContainerCrashed = fmt.Errorf("container crashed")
+	ErrorPodFailed = fmt.Errorf("pod failed")
+}
+
 // Object is a Component coupled with its status, health, and kubernetes pod information. It is
 // designed to be used internally. It should be instantiated with the NewObjects function. All
 // methods are thread-safe.
@@ -47,46 +59,52 @@ func (o *Object) Component() *types.Component {
 
 // Update modifies a component's health and status by looking for errors in a kubernetes PodStatus.
 func (o *Object) Update(status v1.PodStatus) {
+	var err error
+	phase := status.Phase
+	if phase == v1.PodFailed {
+		err = ErrorPodFailed
+	}
+
+	var cstate containerState
+	if cstatuses := status.ContainerStatuses; len(cstatuses) > 0 {
+		cstatus := &status.ContainerStatuses[0]
+		if cstatus.State.Terminated != nil {
+			cstate = containerStateTerminated
+			err = ErrorContainerTerminated
+		} else if cstatus.LastTerminationState.Terminated != nil {
+			cstate = containerStateTerminating
+			err = ErrorContainerTerminating
+		} else if wcstate := cstatus.State.Waiting; wcstate != nil {
+			if strings.Compare("CrashLoopBackOff", wcstate.Reason) == 0 {
+				cstate = containerStateCrashWaiting
+				err = ErrorContainerCrashed
+			} else {
+				cstate = containerStateWaiting
+			}
+		} else if cstatus.State.Running != nil {
+			cstate = containerStateRunning
+		} else {
+			cstate = containerStateUnknown
+		}
+	}
+
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
-	o.podStatus = status
-
-	for _, cstatus := range status.ContainerStatuses {
-		cstate := cstatus.State
-		if cstatus.State.Terminated != nil || cstatus.LastTerminationState.Terminated != nil {
-			o.health = Unhealthy
-			o.err = fmt.Errorf("docker container has terminated for component %v, unable to recover", o.Name())
-			return
-		}
-
-		if waitingState := cstate.Waiting; waitingState != nil {
-			if strings.Compare("CrashLoopBackOff", waitingState.Reason) == 0 {
-				o.health = Unhealthy
-				o.err = fmt.Errorf("docker container has entered a crash loop for component %v", o.Name())
-				return
-			}
-		}
-
-		if cstatus.State.Running != nil {
-			o.health = Healthy
-		}
-	}
-
-	switch status.Phase {
-	case v1.PodPending:
+	psm, ok := phaseStateMap[phase]
+	if !ok {
 		o.health = Unknown
-	case v1.PodRunning:
-		o.health = Healthy
-	case v1.PodSucceeded:
-		o.health = Done
-	case v1.PodUnknown:
-		o.health = Unhealthy
-		o.err = fmt.Errorf("pod for component %v has entered an unknown phase with message: %v", o.Name(), status.Message)
-	case v1.PodFailed:
-		o.health = Unhealthy
-		o.err = fmt.Errorf("pod for component %v has failed with message: %v", o.Name(), status.Message)
 	}
+
+	health, ok := psm[cstate]
+	if ok {
+		o.health = health
+	} else {
+		o.health = Unknown
+	}
+
+	o.podStatus = status
+	o.err = err
 }
 
 // Health returns the health value that is currently affiliated with the object.
@@ -108,5 +126,61 @@ func (o *Object) PodStatus() v1.PodStatus {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 	return o.podStatus
+}
+
+type containerState int
+
+const (
+	containerStateUnknown containerState = iota
+	containerStateTerminated
+	containerStateTerminating
+	containerStateWaiting
+	containerStateCrashWaiting
+	containerStateRunning
+)
+
+var phaseStateMap = map[v1.PodPhase]map[containerState]Health {
+	v1.PodPending: map[containerState]Health{
+		containerStateUnknown: Unknown,
+		containerStateCrashWaiting: Unhealthy,
+		containerStateTerminated: Unhealthy,
+		containerStateTerminating: Unhealthy,
+	},
+
+	v1.PodRunning: map[containerState]Health{
+		containerStateUnknown: Unhealthy,
+		containerStateRunning: Healthy,
+		containerStateWaiting: Unhealthy,
+		containerStateCrashWaiting: Unhealthy,
+		containerStateTerminated: Unknown,
+		containerStateTerminating: Unknown,
+	},
+
+	v1.PodSucceeded: map[containerState]Health{
+		containerStateUnknown: Done,
+		containerStateRunning: Done,
+		containerStateWaiting: Done,
+		containerStateCrashWaiting: Failed,
+		containerStateTerminated: Done,
+		containerStateTerminating: Done,
+	},
+
+	v1.PodFailed: map[containerState]Health{
+		containerStateUnknown: Failed,
+		containerStateRunning: Failed,
+		containerStateWaiting: Failed,
+		containerStateCrashWaiting: Failed,
+		containerStateTerminated: Failed,
+		containerStateTerminating: Failed,
+	},
+
+	v1.PodUnknown: map[containerState]Health{
+		containerStateUnknown: Unknown,
+		containerStateRunning: Unhealthy,
+		containerStateWaiting: Unhealthy,
+		containerStateCrashWaiting: Unhealthy,
+		containerStateTerminated: Unhealthy,
+		containerStateTerminating: Unhealthy,
+	},
 }
 

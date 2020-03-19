@@ -3,6 +3,8 @@ package orch
 import (
 	"testing"
 
+	"k8s.io/api/core/v1"
+
 	"github.com/grpc/grpc/testctrl/svc/types"
 	"github.com/grpc/grpc/testctrl/svc/types/test"
 )
@@ -30,3 +32,126 @@ func TestNewObjects(t *testing.T) {
 	}
 }
 
+func TestObjectUpdate(t *testing.T) {
+	type containerState struct {
+		description string
+		status      v1.ContainerStatus
+	}
+
+	terminatingState := containerState{
+		description: "container terminating",
+		status: v1.ContainerStatus{
+			State: v1.ContainerState{
+				Terminated: &v1.ContainerStateTerminated{},
+			},
+		},
+	}
+
+	terminatedState := containerState{
+		description: "container terminated",
+		status: v1.ContainerStatus{
+			LastTerminationState: v1.ContainerState{
+				Terminated: &v1.ContainerStateTerminated{},
+			},
+		},
+	}
+
+	waitingState := containerState{
+		description: "container waiting",
+		status: v1.ContainerStatus{
+			State: v1.ContainerState{
+				Waiting: &v1.ContainerStateWaiting{},
+			},
+		},
+	}
+
+	crashWaitingState := containerState{
+		description: "container crash waiting",
+		status: v1.ContainerStatus{
+			State: v1.ContainerState{
+				Waiting: &v1.ContainerStateWaiting{
+					Reason: "CrashLoopBackOff",
+				},
+			},
+		},
+	}
+
+	runningState := containerState{
+		description: "container running",
+		status: v1.ContainerStatus{
+			State: v1.ContainerState{
+				Running: &v1.ContainerStateRunning{},
+			},
+		},
+	}
+
+	emptyState := containerState{
+		description: "no container state",
+		status: v1.ContainerStatus{
+			State: v1.ContainerState{},
+		},
+	}
+
+	cases := []struct {
+		phase           v1.PodPhase
+		cstatus         containerState
+		expectedHealth  Health
+	}{
+		// pod pending cases
+		{v1.PodPending, terminatedState, Unhealthy},
+		{v1.PodPending, terminatingState, Unhealthy},
+		{v1.PodPending, waitingState, Unknown},
+		{v1.PodPending, crashWaitingState, Unhealthy},
+		{v1.PodPending, runningState, Unknown},
+		{v1.PodPending, emptyState, Unknown},
+
+		// pod running cases
+		{v1.PodRunning, terminatedState, Unknown},
+		{v1.PodRunning, terminatingState, Unknown},
+		{v1.PodRunning, waitingState, Unhealthy},
+		{v1.PodRunning, crashWaitingState, Unhealthy},
+		{v1.PodRunning, runningState, Healthy},
+		{v1.PodRunning, emptyState, Unhealthy},
+
+		// pod succeeded cases
+		{v1.PodSucceeded, terminatedState, Done},
+		{v1.PodSucceeded, terminatingState, Done},
+		{v1.PodSucceeded, waitingState, Done},
+		{v1.PodSucceeded, crashWaitingState, Failed},
+		{v1.PodSucceeded, runningState, Done},
+		{v1.PodSucceeded, emptyState, Done},
+
+		// pod failed cases
+		{v1.PodFailed, terminatedState, Failed},
+		{v1.PodFailed, terminatingState, Failed},
+		{v1.PodFailed, waitingState, Failed},
+		{v1.PodFailed, crashWaitingState, Failed},
+		{v1.PodFailed, runningState, Failed},
+		{v1.PodFailed, emptyState, Failed},
+
+		// pod unknown cases
+		{v1.PodUnknown, terminatedState, Unhealthy},
+		{v1.PodUnknown, terminatingState, Unhealthy},
+		{v1.PodUnknown, waitingState, Unhealthy},
+		{v1.PodUnknown, crashWaitingState, Unhealthy},
+		{v1.PodUnknown, runningState, Unhealthy},
+		{v1.PodUnknown, emptyState, Unknown},
+	}
+
+	for _, c := range cases {
+		status := v1.PodStatus{
+			Phase: c.phase,
+			ContainerStatuses: []v1.ContainerStatus{
+				c.cstatus.status,
+			},
+		}
+
+		o := NewObjects(test.NewComponentBuilder().Build())[0]
+		o.Update(status)
+
+		if o.Health() != c.expectedHealth {
+			t.Errorf("Object Update set health '%v' but expected '%v' for pod phase '%v' and status '%v'",
+				o.Health(), c.expectedHealth, c.phase, c.cstatus.description)
+		}
+	}
+}
