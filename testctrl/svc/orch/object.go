@@ -7,6 +7,8 @@ import (
 
 	"k8s.io/api/core/v1"
 
+	"github.com/golang/glog"
+
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
 
@@ -68,19 +70,19 @@ func (o *Object) Update(status v1.PodStatus) {
 	var cstate containerState
 	if cstatuses := status.ContainerStatuses; len(cstatuses) > 0 {
 		cstatus := &status.ContainerStatuses[0]
-		if cstatus.State.Terminated != nil {
-			cstate = containerStateTerminated
-			err = ErrorContainerTerminated
-		} else if cstatus.LastTerminationState.Terminated != nil {
-			cstate = containerStateTerminating
-			err = ErrorContainerTerminating
-		} else if wcstate := cstatus.State.Waiting; wcstate != nil {
+		if wcstate := cstatus.State.Waiting; wcstate != nil {
 			if strings.Compare("CrashLoopBackOff", wcstate.Reason) == 0 {
 				cstate = containerStateCrashWaiting
 				err = ErrorContainerCrashed
 			} else {
 				cstate = containerStateWaiting
 			}
+		} else if cstatus.State.Terminated != nil {
+			cstate = containerStateTerminated
+			err = ErrorContainerTerminated
+		} else if cstatus.LastTerminationState.Terminated != nil {
+			cstate = containerStateTerminating
+			err = ErrorContainerTerminating
 		} else if cstatus.State.Running != nil {
 			cstate = containerStateRunning
 		} else {
@@ -105,6 +107,10 @@ func (o *Object) Update(status v1.PodStatus) {
 
 	o.podStatus = status
 	o.err = err
+
+	if o.component.Kind() == types.DriverComponent {
+	glog.V(5).Infof("driver phase=%v health=%v err=%v", phase, o.health, o.err)
+	}
 }
 
 // Health returns the health value that is currently affiliated with the object.
@@ -152,8 +158,8 @@ var phaseStateMap = map[v1.PodPhase]map[containerState]Health {
 		containerStateRunning: Healthy,
 		containerStateWaiting: Unhealthy,
 		containerStateCrashWaiting: Unhealthy,
-		containerStateTerminated: Unknown,
-		containerStateTerminating: Unknown,
+		containerStateTerminated: Unhealthy,
+		containerStateTerminating: Unhealthy,
 	},
 
 	v1.PodSucceeded: map[containerState]Health{

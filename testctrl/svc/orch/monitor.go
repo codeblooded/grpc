@@ -87,13 +87,13 @@ func (m *Monitor) ErrObject() *Object {
 	return m.errObject
 }
 
-// Unhealthy returns true if any object has a health value of Unhealthy.
+// Unhealthy returns true if any object has a health value of Unhealthy or Failed.
 func (m *Monitor) Unhealthy() bool {
 	m.mux.Lock()
 	defer m.mux.Unlock()
 
 	for _, o := range m.objects {
-		if o.Health() == Unhealthy {
+		if o.Health() == Unhealthy || o.Health() == Failed {
 			m.errObject = o
 			return true
 		}

@@ -15,6 +15,9 @@ const (
 
 	// Done indicates the object has terminated with a successful state.
 	Done
+
+	// Failed indicates the object has terminated in an unsuccessful state.
+	Failed
 )
 
 // String returns the string representation of a health constant.
@@ -24,8 +27,9 @@ func (h Health) String() string {
 
 var healthConstToStringMap = map[Health]string{
 	Unknown: "unknown",
-	Unhealthy: "Unhealthy",
+	Unhealthy: "unhealthy",
 	Healthy: "healthy",
 	Done: "done",
+	Failed: "failed",
 }
 

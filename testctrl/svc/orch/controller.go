@@ -240,7 +240,7 @@ func (c *Controller) provision(info *executorInfo) error {
 
 		for {
 
-			if worker.Health() == Unhealthy {
+			if worker.Health() == Unhealthy || worker.Health() == Failed {
 				return fmt.Errorf("component %v terminated due to unhealthy status: %v", worker.Name(), worker.Error())
 			}
 
@@ -270,7 +270,7 @@ func (c *Controller) provision(info *executorInfo) error {
 	}
 
 	for {
-		if driver.Health() == Unhealthy {
+		if driver.Health() == Unhealthy || driver.Health() == Failed {
 			return fmt.Errorf("driver component %v terminated due to unhealthy status: %v", driver.Name(), driver.Error())
 		}
 

@@ -106,8 +106,8 @@ func TestObjectUpdate(t *testing.T) {
 		{v1.PodPending, emptyState, Unknown},
 
 		// pod running cases
-		{v1.PodRunning, terminatedState, Unknown},
-		{v1.PodRunning, terminatingState, Unknown},
+		{v1.PodRunning, terminatedState, Unhealthy},
+		{v1.PodRunning, terminatingState, Unhealthy},
 		{v1.PodRunning, waitingState, Unhealthy},
 		{v1.PodRunning, crashWaitingState, Unhealthy},
 		{v1.PodRunning, runningState, Healthy},
