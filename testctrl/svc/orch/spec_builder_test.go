@@ -21,13 +21,12 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 
 	"github.com/grpc/grpc/testctrl/svc/types"
-	"github.com/grpc/grpc/testctrl/svc/types/test"
 )
 
 func TestSpecBuilderContainers(t *testing.T) {
 	image := "debian:jessie"
-	component := test.NewComponentBuilder().SetContainer(image).Build()
-	session := test.NewSessionBuilder().SetComponents(component).Build()
+	component := types.NewComponent(image, types.DriverComponent)
+	session := types.NewSession(component, nil, nil)
 	sb := NewSpecBuilder(session, component)
 	containers := sb.Containers()
 
@@ -61,8 +60,13 @@ func TestSpecBuilderContainerPorts(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		component := test.NewComponentBuilder().SetKind(c.kind).Build()
-		session := test.NewSessionBuilder().SetComponents(component).Build()
+		component := types.NewComponent(testContainerImage, c.kind)
+		var session *types.Session
+		if component.Kind == types.DriverComponent {
+			session = types.NewSession(component, nil, nil)
+		} else {
+			session = types.NewSession(nil, []*types.Component{component}, nil)
+		}
 		sb := NewSpecBuilder(session, component)
 		ports := containerPortSlice(sb.ContainerPorts())
 
@@ -74,21 +78,23 @@ func TestSpecBuilderContainerPorts(t *testing.T) {
 
 func TestSpecBuilderLabels(t *testing.T) {
 	// Check that spec contains a 'session-name' label
-	session := test.NewSessionBuilder().Build()
-	sb := NewSpecBuilder(session, test.NewComponentBuilder().Build())
+	component := types.NewComponent(testContainerImage, types.DriverComponent)
+	session := types.NewSession(component, nil, nil)
+	sb := NewSpecBuilder(session, component)
 	labels := sb.Labels()
 
-	if sessionName := labels["session-name"]; sessionName != session.Name() {
-		t.Errorf("SpecBuilder Labels generated incorrect 'session-name' label; expected '%s' but got '%v'", session.Name(), sessionName)
+	if sessionName := labels["session-name"]; sessionName != session.Name {
+		t.Errorf("SpecBuilder Labels generated incorrect 'session-name' label; expected '%s' but got '%v'", session.Name, sessionName)
 	}
 
 	// Check the spec contains 'component-name' label
-	component := test.NewComponentBuilder().Build()
-	sb = NewSpecBuilder(test.NewSessionBuilder().Build(), component)
+	component = types.NewComponent(testContainerImage, types.DriverComponent)
+	session = types.NewSession(component, nil, nil)
+	sb = NewSpecBuilder(session, component)
 	labels = sb.Labels()
 
-	if componentName := labels["component-name"]; componentName != component.Name() {
-		t.Errorf("SpecBuilder Labels generated incorrect 'component-name' label; expected '%s' but got '%v'", component.Name(), componentName)
+	if componentName := labels["component-name"]; componentName != component.Name {
+		t.Errorf("SpecBuilder Labels generated incorrect 'component-name' label; expected '%s' but got '%v'", component.Name, componentName)
 	}
 
 	// Check the spec constains 'component-kind' label
@@ -102,8 +108,13 @@ func TestSpecBuilderLabels(t *testing.T) {
 	}
 
 	for _, c := range kindCases {
-		component := test.NewComponentBuilder().SetKind(c.kind).Build()
-		session := test.NewSessionBuilder().SetComponents(component).Build()
+		component := types.NewComponent(testContainerImage, c.kind)
+		var session *types.Session
+		if c.kind == types.DriverComponent {
+			session = types.NewSession(component, nil, nil)
+		} else {
+			session = types.NewSession(nil, []*types.Component{component}, nil)
+		}
 		sb := NewSpecBuilder(session, component)
 		labels := sb.Labels()
 
@@ -113,7 +124,9 @@ func TestSpecBuilderLabels(t *testing.T) {
 	}
 
 	// Check that the 'autogen' label exists, signifying that this resource was automatically generated
-	sb = NewSpecBuilder(test.NewSessionBuilder().Build(), test.NewComponentBuilder().Build())
+	component = types.NewComponent(testContainerImage, types.DriverComponent)
+	session = types.NewSession(component, nil, nil)
+	sb = NewSpecBuilder(session, component)
 	labels = sb.Labels()
 
 	if autogen := labels["autogen"]; autogen != "1" {
@@ -122,9 +135,9 @@ func TestSpecBuilderLabels(t *testing.T) {
 }
 
 func TestSpecBuilderObjectMeta(t *testing.T) {
-	component := test.NewComponentBuilder().Build()
-	componentName := component.Name()
-	session := test.NewSessionBuilder().SetComponents(component).Build()
+	component := types.NewComponent(testContainerImage, types.DriverComponent)
+	componentName := component.Name
+	session := types.NewSession(component, nil, nil)
 	sb := NewSpecBuilder(session, component)
 
 	if resourceName := sb.ObjectMeta().Name; resourceName != componentName {
@@ -136,8 +149,11 @@ func TestSpecBuilderEnv(t *testing.T) {
 	// check all component env variables are copied to spec
 	key := "TESTING"
 	value := "true"
-	component := test.NewComponentBuilder().SetEnv(key, value).Build()
-	session := test.NewSessionBuilder().SetComponents(component).Build()
+	component := types.NewComponent(testContainerImage, types.DriverComponent)
+	component.Env = make(map[string]string)
+	component.Env[key] = value
+	session := types.NewSession(component, nil, nil)
+
 	sb := NewSpecBuilder(session, component)
 	got := getEnv(sb.Env(), key)
 	if got == nil || *got != value {
@@ -155,8 +171,13 @@ func TestSpecBuilderEnv(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		component := test.NewComponentBuilder().SetKind(c.componentKind).Build()
-		session := test.NewSessionBuilder().SetComponents(component).Build()
+		component := types.NewComponent(testContainerImage, c.componentKind)
+		var session *types.Session
+		if component.Kind == types.DriverComponent {
+			session = types.NewSession(component, nil, nil)
+		} else {
+			session = types.NewSession(nil, []*types.Component{component}, nil)
+		}
 		sb := NewSpecBuilder(session, component)
 		included := getEnv(sb.Env(), "SCENARIO_JSON") != nil
 
