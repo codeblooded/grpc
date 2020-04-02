@@ -156,16 +156,6 @@ func TestQueueDone(t *testing.T) {
 	}
 }
 
-type limitlessTracker struct{}
-
-func (lt limitlessTracker) Reserve(session *types.Session) error {
-	return nil
-}
-
-func (lt limitlessTracker) Unreserve(session *types.Session) error {
-	return nil
-}
-
 func makeSessions(t *testing.T, n int) []*types.Session {
 	t.Helper()
 	var sessions []*types.Session

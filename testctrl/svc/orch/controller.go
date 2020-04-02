@@ -23,7 +23,6 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/util/workqueue"
 
 	"github.com/golang/glog"
 
@@ -36,10 +35,11 @@ const executorCount = 1
 // Controller manages active and idle sessions and their interactions with the Kubernetes API.
 type Controller struct {
 	clientset   *kubernetes.Clientset
-	queue       workqueue.Interface
+	queue       *Queue
 	monitors    map[string]*Monitor
 	mux         sync.Mutex
 	wg          sync.WaitGroup
+	quit	    bool
 	quitWatcher chan struct{}
 }
 
@@ -48,7 +48,7 @@ type Controller struct {
 func NewController(clientset *kubernetes.Clientset) *Controller {
 	c := &Controller{
 		clientset: clientset,
-		queue:     workqueue.New(),
+		queue:     NewQueue(limitlessTracker{}),
 		monitors:  make(map[string]*Monitor),
 	}
 	return c
@@ -59,7 +59,7 @@ func NewController(clientset *kubernetes.Clientset) *Controller {
 // scheduling the session, such as invalid configurations.
 func (c *Controller) Schedule(s *types.Session) error {
 	// TODO(codeblooded): Add redundant validation checks
-	c.queue.Add(s)
+	c.queue.Enqueue(s)
 	return nil
 }
 
@@ -83,7 +83,9 @@ func (c *Controller) Start() error {
 func (c *Controller) Stop(timeout time.Duration) error {
 	var err error
 
-	c.queue.ShutDown()
+	c.mux.Lock()
+	c.quit = true
+	c.mux.Unlock()
 
 	executorsDone := make(chan struct{})
 	go func() {
@@ -163,14 +165,22 @@ func (c *Controller) startExecutors() {
 				info.monitor = nil
 
 				glog.Infof("executor[%v]: waiting for a session", info.index)
-				si, quit := c.queue.Get()
+
+				retry:
+				c.mux.Lock()
+				quit := c.quit
+				c.mux.Unlock()
+
+				session := c.queue.Dequeue()
 				if quit {
 					glog.Infof("executor[%v]: terminating gracefully", info.index)
 					c.wg.Done()
 					return
 				}
+				if session == nil {
+					goto retry
+				}
 
-				session := si.(*types.Session)
 				monitor := NewMonitor()
 				c.mux.Lock()
 				c.monitors[session.Name] = monitor
