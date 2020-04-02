@@ -21,7 +21,7 @@ import (
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
 
-func TestAvailabilityAddPool(t *testing.T) {
+func TestReservationManagerAddPool(t *testing.T) {
 	rm := NewReservationManager()
 	poolName := "TestPool"
 	pool := Pool{Name: poolName}
@@ -36,7 +36,7 @@ func TestAvailabilityAddPool(t *testing.T) {
 	}
 }
 
-func TestAvailabilityRemovePool(t *testing.T) {
+func TestReservationManagerRemovePool(t *testing.T) {
 	rm := NewReservationManager()
 	pool := Pool{
 		Name:      "TestPool",
@@ -65,7 +65,7 @@ func TestAvailabilityRemovePool(t *testing.T) {
 	}
 }
 
-func TestAvailabilityReserve(t *testing.T) {
+func TestReservationManagerReserve(t *testing.T) {
 	cases := []struct {
 		description      string
 		workerCount      int
@@ -171,7 +171,7 @@ func TestAvailabilityReserve(t *testing.T) {
 	}
 }
 
-func TestAvailabilityUnreserve(t *testing.T) {
+func TestReservationManagerUnreserve(t *testing.T) {
 	cases := []struct {
 		description      string
 		workerCount      int
