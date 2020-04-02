@@ -61,6 +61,7 @@ func TestQueueDequeue(t *testing.T) {
 
 	// test FIFO-order preserved when it can accomodate all sessions
 	queue = NewQueue(limitlessTracker{})
+
 	sessions = makeSessions(t, n)
 	for _, session := range sessions {
 		queue.items = append(queue.items, &queueItem{session})
