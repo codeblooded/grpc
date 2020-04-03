@@ -87,11 +87,16 @@ argp.add_argument(
     help='Comma-separated list of test cases to run, or \'all\' to run every '
     'test. Available tests: %s' % ' '.join(_TEST_CASES))
 argp.add_argument(
+    '--bootstrap_file',
+    default='',
+    help='File to reference via GRPC_XDS_BOOTSTRAP. Disables built-in '
+    'bootstrap generation')
+argp.add_argument(
     '--client_cmd',
     default=None,
-    help='Command to launch xDS test client. This script will fill in '
-    '{server_uri}, {stats_port} and {qps} parameters using str.format(), and '
-    'generate the GRPC_XDS_BOOTSTRAP file.')
+    help='Command to launch xDS test client. {server_uri}, {stats_port} and '
+    '{qps} references will be replaced using str.format(). GRPC_XDS_BOOTSTRAP '
+    'will be set for the command')
 argp.add_argument('--zone', default='us-central1-a')
 argp.add_argument('--secondary_zone',
                   default='us-west1-b',
@@ -167,6 +172,12 @@ argp.add_argument(
     'existing will result in an error')
 argp.add_argument('--verbose',
                   help='verbose log output',
+                  default=False,
+                  action='store_true')
+# TODO(ericgribkoff) Remove this param once the sponge-formatted log files are
+# visible in all test environments.
+argp.add_argument('--log_client_output',
+                  help='Log captured client output',
                   default=False,
                   action='store_true')
 args = argp.parse_args()
@@ -1085,11 +1096,14 @@ try:
         server_uri = service_host_name
     else:
         server_uri = service_host_name + ':' + str(gcp.service_port)
-    with tempfile.NamedTemporaryFile(delete=False) as bootstrap_file:
-        bootstrap_file.write(
-            _BOOTSTRAP_TEMPLATE.format(
-                node_id=socket.gethostname()).encode('utf-8'))
-        bootstrap_path = bootstrap_file.name
+    if args.bootstrap_file:
+        bootstrap_path = os.path.abspath(args.bootstrap_file)
+    else:
+        with tempfile.NamedTemporaryFile(delete=False) as bootstrap_file:
+            bootstrap_file.write(
+                _BOOTSTRAP_TEMPLATE.format(
+                    node_id=socket.gethostname()).encode('utf-8'))
+            bootstrap_path = bootstrap_file.name
     client_env = dict(os.environ, GRPC_XDS_BOOTSTRAP=bootstrap_path)
     client_cmd = shlex.split(
         args.client_cmd.format(server_uri=server_uri,
@@ -1103,7 +1117,8 @@ try:
         log_dir = os.path.join(_TEST_LOG_BASE_DIR, test_case)
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
-        test_log_file = open(os.path.join(log_dir, _SPONGE_LOG_NAME), 'w+')
+        test_log_filename = os.path.join(log_dir, _SPONGE_LOG_NAME)
+        test_log_file = open(test_log_filename, 'w+')
         client_process = None
         try:
             client_process = subprocess.Popen(client_cmd,
@@ -1149,10 +1164,15 @@ try:
         finally:
             if client_process:
                 client_process.terminate()
+            test_log_file.close()
             # Workaround for Python 3, as report_utils will invoke decode() on
             # result.message, which has a default value of ''.
             result.message = result.message.encode('UTF-8')
             test_results[test_case] = [result]
+            if args.log_client_output:
+                logger.info('Client output:')
+                with open(test_log_filename, 'r') as client_output:
+                    logger.info(client_output.read())
     if not os.path.exists(_TEST_LOG_BASE_DIR):
         os.makedirs(_TEST_LOG_BASE_DIR)
     report_utils.render_junit_xml_report(test_results,
