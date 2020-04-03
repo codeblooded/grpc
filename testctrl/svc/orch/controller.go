@@ -39,7 +39,7 @@ type Controller struct {
 	monitors    map[string]*Monitor
 	mux         sync.Mutex
 	wg          sync.WaitGroup
-	quit	    bool
+	quit        bool
 	quitWatcher chan struct{}
 }
 
@@ -48,7 +48,6 @@ type Controller struct {
 func NewController(clientset *kubernetes.Clientset) *Controller {
 	c := &Controller{
 		clientset: clientset,
-		queue:     NewQueue(limitlessTracker{}),
 		monitors:  make(map[string]*Monitor),
 	}
 	return c
@@ -67,6 +66,10 @@ func (c *Controller) Schedule(s *types.Session) error {
 // number of sessions at a time. An error is returned if there are problems within the goroutines,
 // such as the inability to connect to the Kubernetes API.
 func (c *Controller) Start() error {
+	if err := c.setupQueue(c.clientset.CoreV1().Nodes()); err != nil {
+		return fmt.Errorf("controller start failed when setting up queue: %v", err)
+	}
+
 	if err := c.startWatcher(); err != nil {
 		return fmt.Errorf("controller start failed when starting watcher: %v", err)
 	}
@@ -103,6 +106,27 @@ func (c *Controller) Stop(timeout time.Duration) error {
 
 	close(c.quitWatcher)
 	return err
+}
+
+// setupQueue makes a request for available nodes, uses pool discovery logic to determine available
+// pools and capacities and configures the queue.
+func (c *Controller) setupQueue(nl NodeLister) error {
+	pools, err := FindPools(nl)
+	if err != nil {
+		return err
+	}
+
+	rm := NewReservationManager()
+	var poolNames []string
+
+	for name, pool := range pools {
+		poolNames = append(poolNames, name)
+		rm.AddPool(pool)
+	}
+
+	glog.Infof("discovered pools: %v", poolNames)
+	c.queue = NewQueue(rm)
+	return nil
 }
 
 // startWatcher creates a goroutine which watches for all kubernetes pod events in the cluster.
@@ -166,7 +190,7 @@ func (c *Controller) startExecutors() {
 
 				glog.Infof("executor[%v]: waiting for a session", info.index)
 
-				retry:
+			retry:
 				c.mux.Lock()
 				quit := c.quit
 				c.mux.Unlock()

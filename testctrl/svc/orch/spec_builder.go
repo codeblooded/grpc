@@ -102,20 +102,13 @@ func (sb *SpecBuilder) Labels() map[string]string {
 
 // Pod returns a kubernetes pod object which meets the requirements of the component.
 func (sb *SpecBuilder) Pod() *apiv1.Pod {
-	var pool string
-	if sb.component.Kind == types.DriverComponent {
-		pool = "drivers"
-	} else {
-		pool = "workers-8core"
-	}
-
 	return &apiv1.Pod{
 		ObjectMeta: sb.ObjectMeta(),
 		Spec: apiv1.PodSpec{
 			Affinity:   sb.Affinity(),
 			Containers: sb.Containers(),
 			NodeSelector: map[string]string{
-				"pool": pool,
+				"pool": sb.component.PoolName,
 			},
 			RestartPolicy: "Never",
 		},

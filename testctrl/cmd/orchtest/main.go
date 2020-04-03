@@ -58,8 +58,14 @@ func main() {
 	go func() {
 		for i := 0; i < *count; i++ {
 			driver := types.NewComponent(*driver, types.DriverComponent)
+			driver.PoolName = "drivers"
+
 			server := types.NewComponent(*server, types.ServerComponent)
+			server.PoolName = "workers-8core"
+
 			client := types.NewComponent(*client, types.ClientComponent)
+			client.PoolName = "workers-8core"
+
 			c.Schedule(types.NewSession(driver, []*types.Component{server, client}, scenario(*scenarioJSON)))
 		}
 	}()
