@@ -20,27 +20,6 @@ import (
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
 
-// Pool describes a cluster of identical machines.
-type Pool struct {
-	// Name is an indentifier that uniquely distinguishes a pool instance.
-	Name string
-
-	// Available is the number of machines that are idle and able to be reserved.
-	Available int
-
-	// Capacity is the total number of machines in the pool.
-	Capacity int
-}
-
-// PoolAdder is a type that can add and remove pools.
-type PoolAdder interface {
-	// AddPool adds a pool.
-	AddPool(pool Pool)
-
-	// RemovePool removes the pool.
-	RemovePool(pool Pool)
-}
-
 // ReservationTracker limits the number of running sessions by considering the number of machines
 // that are available.
 type ReservationTracker interface {
