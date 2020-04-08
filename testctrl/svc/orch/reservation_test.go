@@ -171,7 +171,7 @@ func TestAvailabilityReserve(t *testing.T) {
 	}
 }
 
-func TestAvailabilityReturn(t *testing.T) {
+func TestAvailabilityUnreserve(t *testing.T) {
 	cases := []struct {
 		description      string
 		workerCount      int
@@ -212,7 +212,7 @@ func TestAvailabilityReturn(t *testing.T) {
 
 		session := types.NewSession(driver, workers, nil)
 
-		err := rm.Return(session)
+		err := rm.Unreserve(session)
 		if err != nil {
 			t.Errorf("unexpected error returned: %v", err)
 		}
@@ -237,7 +237,7 @@ func TestAvailabilityReturn(t *testing.T) {
 
 	session := types.NewSession(driver, nil, nil)
 
-	err := rm.Return(session)
+	err := rm.Unreserve(session)
 	errType := reflect.TypeOf(err)
 	if errType == nil || errType != reflect.TypeOf(PoolUnknownError{}) {
 		t.Errorf("expected pool unknown error for un-added pool, but got %v", errType.Name())

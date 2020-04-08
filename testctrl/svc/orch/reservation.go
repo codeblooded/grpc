@@ -55,16 +55,16 @@ type ReservationTracker interface {
 	// PoolCapacityError.
 	Reserve(session *types.Session) error
 
-	// Return accepts a session that has reserved machines that are no longer needed. It
+	// Unreserve accepts a session that has reserved machines that are no longer needed. It
 	// increases the number of available machines to allow other sessions to provision
 	// resources. It does not actually return, tear down or delete any machine or resources.
 	//
 	// This method makes an assumption that Reserve has been called on the session, performing
 	// no checks that the available machines in each pool do not exceeds their capacities.
 	//
-	// If a component references a pool that was not added to the availability instance, it
+	// If a component references a pool that was Unreserve added to the availability instance, it
 	// returns a PoolUnknownError.
-	Return(session *types.Session) error
+	Unreserve(session *types.Session) error
 }
 
 // ReservationManager contains a set of pools and manages the availability of their machines. It is
@@ -132,16 +132,16 @@ func (rm *ReservationManager) Reserve(session *types.Session) error {
 	return nil
 }
 
-// Return accepts a session that has reserved machines that are no longer needed. It increases the
-// number of available machines to allow other sessions to provision resources. It does not actually
-// return, tear down or delete any machine or resources.
+// Unreserve accepts a session that has reserved machines that are no longer needed. It increases
+// the number of available machines to allow other sessions to provision resources. It does not
+// actually return, tear down or delete any machine or resources.
 //
 // This method makes an assumption that Reserve has been called on the session, performing no checks
 // that the available machines in each pool do not exceeds their capacities.
 //
 // If a component references a pool that was not added to the availability instance, it returns a
 // PoolUnknownError.
-func (rm *ReservationManager) Return(session *types.Session) error {
+func (rm *ReservationManager) Unreserve(session *types.Session) error {
 	components := sessionComponents(session)
 
 	machineCounts, err := rm.machineCounts(components)
