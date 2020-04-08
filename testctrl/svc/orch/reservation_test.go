@@ -74,7 +74,7 @@ func TestAvailabilityReserve(t *testing.T) {
 		err              error
 	}{
 		{
-			description:      "capacity exheeded",
+			description:      "capacity exceeded",
 			workerCount:      5,
 			workerPoolBefore: Pool{Available: 4, Capacity: 4},
 			workerPoolAfter:  Pool{Available: 4, Capacity: 4},

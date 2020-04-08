@@ -51,7 +51,7 @@ type ReservationLimiter interface {
 	// If there are not enough machines available in the specified pools to accomodate the
 	// session, it returns a PoolAvailabilityError. If a component references a pool that was
 	// not added to the availability instance, it returns a PoolUnknownError. If the number of
-	// machines required by the session exheeds the capacity of the pools, it returns a
+	// machines required by the session exceeds the capacity of the pools, it returns a
 	// PoolCapacityError.
 	Reserve(session *types.Session) error
 
@@ -60,7 +60,7 @@ type ReservationLimiter interface {
 	// resources. It does not actually return, tear down or delete any machine or resources.
 	//
 	// This method makes an assumption that Reserve has been called on the session, performing
-	// no checks that the available machines in each pool do not exheed their capacities.
+	// no checks that the available machines in each pool do not exceeds their capacities.
 	//
 	// If a component references a pool that was not added to the availability instance, it
 	// returns a PoolUnknownError.
@@ -107,7 +107,7 @@ func (rm *ReservationManager) RemovePool(pool Pool) error {
 // If there are not enough machines available in the specified pools to accomodate the session, it
 // returns a PoolAvailabilityError. If a component references a pool that was not added to the
 // availability instance, it returns a PoolUnknownError. If the number of machines required by the
-// session exheeds the capacity of the pools, it returns a PoolCapacityError.
+// session exceeds the capacity of the pools, it returns a PoolCapacityError.
 func (rm *ReservationManager) Reserve(session *types.Session) error {
 	components := sessionComponents(session)
 
@@ -137,7 +137,7 @@ func (rm *ReservationManager) Reserve(session *types.Session) error {
 // return, tear down or delete any machine or resources.
 //
 // This method makes an assumption that Reserve has been called on the session, performing no checks
-// that the available machines in each pool do not exheed their capacities.
+// that the available machines in each pool do not exceeds their capacities.
 //
 // If a component references a pool that was not added to the availability instance, it returns a
 // PoolUnknownError.
@@ -180,7 +180,7 @@ func (rm *ReservationManager) machineCounts(components []*types.Component) (map[
 
 // fits accepts a map with pool names as keys and number of required machines within the pool as
 // values. It returns true if there are enough available resources to schedule. If the number of
-// machines required exheeds the capacity of the pools, it returns a PoolCapacityError.
+// machines required exceeds the capacity of the pools, it returns a PoolCapacityError.
 func (rm *ReservationManager) fits(machineCounts map[string]int) (bool, error) {
 	for poolName, c := range machineCounts {
 		pool := rm.pools[poolName]
