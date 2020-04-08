@@ -41,9 +41,9 @@ type PoolAdder interface {
 	RemovePool(pool Pool)
 }
 
-// ReservationLimiter limits the number of running sessions by considering the number of machines
+// ReservationTracker limits the number of running sessions by considering the number of machines
 // that are available in a set of pools.
-type ReservationLimiter interface {
+type ReservationTracker interface {
 	// Reserve accepts a session that is going to reserve machines and decreases the number of
 	// available machines from the appropriate pools. It does not actually reserve any machine or
 	// provision any resources.
