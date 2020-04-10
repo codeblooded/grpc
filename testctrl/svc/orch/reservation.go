@@ -42,33 +42,28 @@ type PoolAdder interface {
 }
 
 // ReservationTracker limits the number of running sessions by considering the number of machines
-// that are available in a set of pools.
+// that are available.
 type ReservationTracker interface {
-	// Reserve accepts a session that is going to reserve machines and decreases the number of
-	// available machines from the appropriate pools. It does not actually reserve any machine or
-	// provision any resources.
+	// Reserve decreases the number of machines a session requires from the number of available
+	// machines. If there are not enough machines available, it returns a PoolAvailabilityError.
 	//
-	// If there are not enough machines available in the specified pools to accomodate the
-	// session, it returns a PoolAvailabilityError. If a component references a pool that was
-	// not added to the availability instance, it returns a PoolUnknownError. If the number of
-	// machines required by the session exceeds the capacity of the pools, it returns a
-	// PoolCapacityError.
+	// If the number of machines required exceeds the capacity, Reserve returns a
+	// PoolCapacityError. It returns a PoolUnknownError if the session requires an unknown pool.
 	Reserve(session *types.Session) error
 
-	// Unreserve accepts a session that has reserved machines that are no longer needed. It
-	// increases the number of available machines to allow other sessions to provision
-	// resources. It does not actually return, tear down or delete any machine or resources.
+	// Unreserve increases the number of available machines by the number of machines a session
+	// required. Essentially, it reverses the actions of the Reserve function.
 	//
-	// This method makes an assumption that Reserve has been called on the session, performing
-	// no checks that the available machines in each pool do not exceeds their capacities.
+	// This method does not ensure that Reserve has been called on the session. If the caller
+	// does not invoke Reserve first, the number of available machines may exceed the true
+	// capacity.
 	//
-	// If a component references a pool that was Unreserve added to the availability instance, it
-	// returns a PoolUnknownError.
+	// It returns a PoolUnknownError if the session requires an unknown pool.
 	Unreserve(session *types.Session) error
 }
 
 // ReservationManager contains a set of pools and manages the availability of their machines. It is
-// designed to be used to limit the number of running sessions. It is not thread-safe.
+// designed to help limit the number of running sessions. It is not thread-safe.
 //
 // Instances should be created using the NewReservationManager constructor, not a literal.
 type ReservationManager struct {
@@ -83,13 +78,14 @@ func NewReservationManager() *ReservationManager {
 	}
 }
 
-// AddPool adds a pool to the list of pools to consider when checking for availability.
+// AddPool adds a pool to the list of pools.
 func (rm *ReservationManager) AddPool(pool Pool) {
 	rm.pools[pool.Name] = pool
 }
 
-// AddPool removes a pool from the list of pools to consider when checking for availability. If the
-// pool was never added, it returns a PoolUnknownError.
+// RemovePool removes a pool from the list of pools.
+//
+// If the pool was never added, it returns a PoolUnknownError.
 func (rm *ReservationManager) RemovePool(pool Pool) error {
 	name := pool.Name
 	if _, ok := rm.pools[name]; !ok {
@@ -100,14 +96,11 @@ func (rm *ReservationManager) RemovePool(pool Pool) error {
 	return nil
 }
 
-// Reserve accepts a session that is going to reserve machines and decreases the number of available
-// machines from the appropriate pools. It does not actually reserve any machine or provision any
-// resources.
+// Reserve decreases the number of machines a session requires from the number of available
+// machines. If there are not enough machines available, it returns a PoolAvailabilityError.
 //
-// If there are not enough machines available in the specified pools to accomodate the session, it
-// returns a PoolAvailabilityError. If a component references a pool that was not added to the
-// availability instance, it returns a PoolUnknownError. If the number of machines required by the
-// session exceeds the capacity of the pools, it returns a PoolCapacityError.
+// If the number of machines required exceeds the capacity, Reserve returns a
+// PoolCapacityError. It returns a PoolUnknownError if the session requires an unknown pool.
 func (rm *ReservationManager) Reserve(session *types.Session) error {
 	components := sessionComponents(session)
 
@@ -132,15 +125,15 @@ func (rm *ReservationManager) Reserve(session *types.Session) error {
 	return nil
 }
 
-// Unreserve accepts a session that has reserved machines that are no longer needed. It increases
-// the number of available machines to allow other sessions to provision resources. It does not
-// actually return, tear down or delete any machine or resources.
+
+// Unreserve increases the number of available machines by the number of machines a session
+// required. Essentially, it reverses the actions of the Reserve function.
 //
-// This method makes an assumption that Reserve has been called on the session, performing no checks
-// that the available machines in each pool do not exceeds their capacities.
+// This method does not ensure that Reserve has been called on the session. If the caller
+// does not invoke Reserve first, the number of available machines may exceed the true
+// capacity.
 //
-// If a component references a pool that was not added to the availability instance, it returns a
-// PoolUnknownError.
+// It returns a PoolUnknownError if the session requires an unknown pool.
 func (rm *ReservationManager) Unreserve(session *types.Session) error {
 	components := sessionComponents(session)
 
