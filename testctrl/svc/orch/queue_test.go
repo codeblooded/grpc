@@ -61,6 +61,7 @@ func TestQueueDequeue(t *testing.T) {
 
 	// test FIFO-order preserved when it can accomodate all sessions
 	queue = NewQueue(limitlessTracker{})
+
 	sessions = makeSessions(t, n)
 	for _, session := range sessions {
 		queue.items = append(queue.items, &queueItem{session})
@@ -153,16 +154,6 @@ func TestQueueDone(t *testing.T) {
 	if session := queue.Dequeue(); session != session2 {
 		t.Fatalf("session2 not dequeued, indicating Done is likely not increasing available machines")
 	}
-}
-
-type limitlessTracker struct{}
-
-func (lt limitlessTracker) Reserve(session *types.Session) error {
-	return nil
-}
-
-func (lt limitlessTracker) Unreserve(session *types.Session) error {
-	return nil
 }
 
 func makeSessions(t *testing.T, n int) []*types.Session {
