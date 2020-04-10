@@ -49,8 +49,8 @@ type Event struct {
 // NewEvent instantiates an Event struct, setting its Timestamp to now and its SubjectName to the
 // result of Name method on the ResourceNamer. It expects a message, since supplying one can provide
 // more context in an unstructured format.
-func NewEvent(subject ResourceNamer, k EventKind, messageFmt string, args ...interface{}) Event {
-	return Event{
+func NewEvent(subject ResourceNamer, k EventKind, messageFmt string, args ...interface{}) *Event {
+	return &Event{
 		SubjectName: subject.ResourceName(),
 		Kind:        k,
 		Time:        time.Now(),

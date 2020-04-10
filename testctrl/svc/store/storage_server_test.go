@@ -40,7 +40,7 @@ func TestStorageServer(t *testing.T) {
 		types.NewSession(nil, make([]*types.Component, 0), nil),
 		types.NewSession(nil, make([]*types.Component, 0), nil),
 	}
-	events := []types.Event{
+	events := []*types.Event{
 		types.NewEvent(newFakeResourceNamer("First Resource"),
 			types.AcceptEvent,
 			"First Event"),
@@ -65,17 +65,17 @@ func TestStorageServer(t *testing.T) {
 		t.Fatalf("Duplicate session should return an error.")
 	}
 	// Storing an event for en existing session succeeds.
-	err = s.StoreEvent(sessions[0].Name, &events[0])
+	err = s.StoreEvent(sessions[0].Name, events[0])
 	if err != nil {
 		t.Fatalf("Error storing event for existing session: %v", err)
 	}
 	// Storing an event for a non-existing session returns an error.
-	err = s.StoreEvent(sessions[2].Name, &events[1])
+	err = s.StoreEvent(sessions[2].Name, events[1])
 	if err == nil {
 		t.Fatalf("Storing event for unknown session should return an error.")
 	}
 	// Storing a second event for an existing session succeeds.
-	err = s.StoreEvent(sessions[0].Name, &events[1])
+	err = s.StoreEvent(sessions[0].Name, events[1])
 	if err != nil {
 		t.Fatalf("Error storing a second event for session: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestStorageServer(t *testing.T) {
 	if event == nil {
 		t.Fatalf("Error reading latest event: event is nil.")
 	}
-	if *event != events[1] {
+	if *event != *events[1] {
 		t.Fatalf("Error reading latest event: expected %q, got %q",
 			event.SubjectName, events[1].SubjectName)
 	}
@@ -112,7 +112,7 @@ func TestStorageServer(t *testing.T) {
 			event.SubjectName)
 	}
 	// Storing an event for a deleted session returns an error.
-	err = s.StoreEvent(sessions[0].Name, &events[0])
+	err = s.StoreEvent(sessions[0].Name, events[0])
 	if err == nil {
 		t.Fatalf("Storing event for deleted session should return an error.")
 	}
