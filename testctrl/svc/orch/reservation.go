@@ -125,7 +125,6 @@ func (rm *ReservationManager) Reserve(session *types.Session) error {
 	return nil
 }
 
-
 // Unreserve increases the number of available machines by the number of machines a session
 // required. Essentially, it reverses the actions of the Reserve function.
 //
