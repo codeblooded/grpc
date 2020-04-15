@@ -155,35 +155,3 @@ func TestQueueDone(t *testing.T) {
 		t.Fatalf("session2 not dequeued, indicating Done is likely not increasing available machines")
 	}
 }
-
-func makeSessions(t *testing.T, n int) []*types.Session {
-	t.Helper()
-	var sessions []*types.Session
-	for i := 0; i < n; i++ {
-		sessions = append(sessions, types.NewSession(nil, nil, nil))
-	}
-	return sessions
-}
-
-func makeWorkers(t *testing.T, n int, pool *string) []*types.Component {
-	t.Helper()
-	var components []*types.Component
-
-	if n < 1 {
-		return components
-	}
-
-	components = append(components, types.NewComponent(testContainerImage, types.ServerComponent))
-
-	for i := n - 1; i > 0; i-- {
-		components = append(components, types.NewComponent(testContainerImage, types.ClientComponent))
-	}
-
-	if pool != nil {
-		for _, c := range components {
-			c.PoolName = *pool
-		}
-	}
-
-	return components
-}

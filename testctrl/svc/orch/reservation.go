@@ -134,7 +134,7 @@ func (rm *ReservationManager) Unreserve(session *types.Session) error {
 func (rm *ReservationManager) machineCounts(components []*types.Component) (map[string]int, error) {
 	machines := make(map[string]int)
 
-	for poolName, _ := range rm.pools {
+	for poolName := range rm.pools {
 		machines[poolName] = 0
 	}
 

@@ -153,10 +153,10 @@ func (sb *SpecBuilder) Affinity() *apiv1.Affinity {
 	return &apiv1.Affinity{
 		PodAntiAffinity: &apiv1.PodAntiAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: []apiv1.PodAffinityTerm{
-				apiv1.PodAffinityTerm{
+				{
 					LabelSelector: &metav1.LabelSelector{
 						MatchExpressions: []metav1.LabelSelectorRequirement{
-							metav1.LabelSelectorRequirement{
+							{
 								Key:      "autogen",
 								Operator: metav1.LabelSelectorOpExists,
 							},

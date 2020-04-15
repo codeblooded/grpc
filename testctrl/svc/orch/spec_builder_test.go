@@ -195,7 +195,7 @@ func TestSpecBuilderEnv(t *testing.T) {
 	serverValue := "server"
 	kindCases := []struct {
 		componentKind types.ComponentKind
-		workerKind *string
+		workerKind    *string
 	}{
 		{types.DriverComponent, nil},
 		{types.ClientComponent, &clientValue},
@@ -226,13 +226,4 @@ func getEnv(envs []apiv1.EnvVar, name string) *string {
 		}
 	}
 	return nil
-}
-
-func strUnwrap(str *string) string {
-	val := "<nil>"
-	if str != nil {
-		return *str
-	}
-
-	return val
 }

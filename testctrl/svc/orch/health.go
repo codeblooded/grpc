@@ -42,9 +42,9 @@ func (h Health) String() string {
 }
 
 var healthConstToStringMap = map[Health]string{
-	Unknown: "Unknown",
-	Ready: "Ready",
-	NotReady: "NotReady",
+	Unknown:   "Unknown",
+	Ready:     "Ready",
+	NotReady:  "NotReady",
 	Succeeded: "Succeeded",
-	Failed: "Failed",
+	Failed:    "Failed",
 }
