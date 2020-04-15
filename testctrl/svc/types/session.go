@@ -25,18 +25,20 @@ import (
 // Session is a test scenario, its components and metdata.
 type Session struct {
 	// Name is a unique string that identifies a session.
-	Name       string
+	Name string
 
-	// Driver is the single component that is responsible for orchestrating the tess. By design,
-	// it should communicate with the worker components.
-	Driver     *Component
+	// Driver is the single component that is responsible for orchestrating
+	// the tests. By design, it should communicate with the worker
+	// components.
+	Driver *Component
 
-	// Workers is the slice of components that do not orchestrate the tess. For example, the
-	// server and client components which accept and provide traffic.
-	Workers    []*Component
+	// Workers is the slice of components that do not orchestrate the tests.
+	// For example, the server and client components which accept and
+	// provide traffic.
+	Workers []*Component
 
 	// Scenario is the configuration of the benchmarks.
-	Scenario   *pb.Scenario
+	Scenario *pb.Scenario
 
 	// CreateTime is the time the session was created.
 	CreateTime time.Time
@@ -53,18 +55,20 @@ func NewSession(driver *Component, workers []*Component, scenario *pb.Scenario) 
 	}
 }
 
-// ResourceName returns the name the session prefixed with `sessions/`. This value should be the
-// name that is shared with a consumer of the API.
+// ResourceName returns the name the session prefixed with `sessions/`. This
+// value should be the name that is shared with a consumer of the API.
 func (s *Session) ResourceName() string {
 	return fmt.Sprintf("sessions/%s", s.Name)
 }
 
-// ClientWorkers returns the slice of all the workers with a kind of ClientComponens.
+// ClientWorkers returns the slice of all the workers with a kind of
+// ClientComponents.
 func (s *Session) ClientWorkers() []*Component {
 	return s.filterWorkers(ClientComponent)
 }
 
-// ServerWorkers returns the slice of all the workers with a kind of ServerComponens.
+// ServerWorkers returns the slice of all the workers with a kind of
+// ServerComponents.
 func (s *Session) ServerWorkers() []*Component {
 	return s.filterWorkers(ServerComponent)
 }

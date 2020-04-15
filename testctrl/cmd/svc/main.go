@@ -30,6 +30,7 @@ import (
 	pb "github.com/grpc/grpc/testctrl/proto/scheduling/v1"
 	"github.com/grpc/grpc/testctrl/svc"
 	"github.com/grpc/grpc/testctrl/svc/orch"
+	"github.com/grpc/grpc/testctrl/svc/store"
 
 	lrPb "google.golang.org/genproto/googleapis/longrunning"
 	"google.golang.org/grpc"
@@ -95,8 +96,15 @@ func main() {
 		glog.Fatalf("failed to listen on port %d: %v", *port, err)
 	}
 
-	lrPb.RegisterOperationsServer(grpcServer, &svc.OperationsServer{})
-	pb.RegisterSchedulingServiceServer(grpcServer, &svc.SchedulingServer{controller})
+	storageServer := store.NewStorageServer()
+
+	lrPb.RegisterOperationsServer(grpcServer, svc.NewOperationsServer(
+		storageServer,
+	))
+
+	pb.RegisterSchedulingServiceServer(grpcServer, svc.NewSchedulingServer(
+		controller, storageServer,
+	))
 
 	glog.Infof("running gRPC server (insecure) on port %d", *port)
 	err = grpcServer.Serve(lis)

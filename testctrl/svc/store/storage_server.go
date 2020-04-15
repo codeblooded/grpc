@@ -26,12 +26,15 @@ import (
 type Store interface {
 	// Adds a Session object to the Store.
 	StoreSession(session *types.Session) error
+	// Retrieves an existing session from the Store.
+	GetSession(sessionName string) *types.Session
 	// Records an event and associates it to an existing session.
 	StoreEvent(sessionName string, event *types.Event) error
-	// Gets the latest event associated to an existing session.
-	GetLatestEvent(sessionName string) *types.Event
+	// Gets the latest event associated to an existing session,
+	// and an error if the session does not exist.
+	GetLatestEvent(sessionName string) (*types.Event, error)
 	// Deletes a Session object and associated events from the Store.
-	DeleteSession(sessionName string) error
+	DeleteSession(sessionName string)
 }
 
 // StorageServer is an in-memory implementation of a data store.
@@ -63,6 +66,17 @@ func (s *StorageServer) StoreSession(session *types.Session) error {
 	return nil
 }
 
+// GetSession retrieves an existing session from the StorageServer.
+func (s *StorageServer) GetSession(sessionName string) *types.Session {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	session, sessionExists := s.sessionMap[sessionName]
+	if !sessionExists {
+		return nil
+	}
+	return &session
+}
+
 // StoreEvent stores an event associated with an existing session.
 func (s *StorageServer) StoreEvent(sessionName string, event *types.Event) error {
 	s.mutex.Lock()
@@ -75,16 +89,19 @@ func (s *StorageServer) StoreEvent(sessionName string, event *types.Event) error
 	return fmt.Errorf("Unknown session name: %s", sessionName)
 }
 
-// GetLatestEvent returns the latest event associated with an existing session.
-func (s *StorageServer) GetLatestEvent(sessionName string) *types.Event {
+// GetLatestEvent returns the latest event associated with an existing session,
+// and an error if the session does not exist.
+func (s *StorageServer) GetLatestEvent(sessionName string) (*types.Event, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	eventStore, sessionExists := s.eventMap[sessionName]
-	if !(sessionExists && len(eventStore) > 0) {
-		return nil
+	if !sessionExists {
+		return nil, fmt.Errorf("Unknown session name: %s", sessionName)
 	}
-	event := eventStore[len(eventStore)-1]
-	return &event
+	if len(eventStore) == 0 {
+		return nil, nil
+	}
+	return &eventStore[len(eventStore)-1], nil
 }
 
 // DeleteSession deletes a session from the StorageServer.

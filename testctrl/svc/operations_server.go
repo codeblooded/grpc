@@ -16,29 +16,259 @@ package svc
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
-	emptyPb "github.com/golang/protobuf/ptypes/empty"
-	lrPb "google.golang.org/genproto/googleapis/longrunning"
+	"github.com/golang/protobuf/ptypes"
+	anypb "github.com/golang/protobuf/ptypes/any"
+	emptypb "github.com/golang/protobuf/ptypes/empty"
+	timestamppb "github.com/golang/protobuf/ptypes/timestamp"
+	svcpb "github.com/grpc/grpc/testctrl/proto/scheduling/v1"
+	"github.com/grpc/grpc/testctrl/svc/store"
+	"github.com/grpc/grpc/testctrl/svc/types"
+	lrpb "google.golang.org/genproto/googleapis/longrunning"
+	codepb "google.golang.org/genproto/googleapis/rpc/code"
+	statuspb "google.golang.org/genproto/googleapis/rpc/status"
 )
 
-type OperationsServer struct{}
+// operationNamePrefix is the prefix present in all operation anmes.
+const operationNamePrefix = "operations/"
 
-func (o *OperationsServer) ListOperations(ctx context.Context, req *lrPb.ListOperationsRequest) (*lrPb.ListOperationsResponse, error) {
-	return nil, nil
+// OperationsServer implements the google.longrunning.Operations interface
+// to provide access to a data Store.
+type OperationsServer struct {
+	store store.Store
 }
 
-func (o *OperationsServer) GetOperation(ctx context.Context, req *lrPb.GetOperationRequest) (*lrPb.Operation, error) {
-	return nil, nil
+// NewOperationsServer constructs a new instance of OperationsServer.
+func NewOperationsServer(store store.Store) *OperationsServer {
+	return &OperationsServer{
+		store: store,
+	}
 }
 
-func (o *OperationsServer) DeleteOperation(ctx context.Context, req *lrPb.DeleteOperationRequest) (*emptyPb.Empty, error) {
-	return nil, nil
+// getSessionName converts an operation name to a session name.
+// This function returns an error if the operation name is invalid.
+func getSessionName(operationName string) (string, error) {
+	if !strings.HasPrefix(operationName, operationNamePrefix) {
+		return operationName, fmt.Errorf(
+			"invalid operation name: %q", operationName)
+	}
+	return strings.TrimPrefix(operationName, operationNamePrefix), nil
 }
 
-func (o *OperationsServer) CancelOperation(ctx context.Context, req *lrPb.CancelOperationRequest) (*emptyPb.Empty, error) {
-	return nil, nil
+// getOperationName converts a session name to an operation name.
+func getOperationName(sessionName string) string {
+	return fmt.Sprintf("%s%s", operationNamePrefix, sessionName)
 }
 
-func (o *OperationsServer) WaitOperation(ctx context.Context, req *lrPb.WaitOperationRequest) (*lrPb.Operation, error) {
-	return nil, nil
+// isOperationDone returns true if the operation is finished, and false
+// otherwise, based on the latest event received by the operation's session.
+func isOperationDone(e *types.Event) bool {
+	if e == nil {
+		return false
+	}
+	switch e.Kind {
+	case types.InternalErrorEvent:
+		return true
+	case types.DoneEvent:
+		return true
+	case types.ErrorEvent:
+		return true
+	default:
+		return false
+	}
+}
+
+// isOperationSuccess returns true if the operation is finished and is
+// successful, and false otherwise, based on the latest event received by
+// the operation's session.
+func isOperationSuccess(e *types.Event) bool {
+	return (isOperationDone(e) && e.Kind == types.DoneEvent)
+}
+
+// newEventProto constructs an Event proto from an Event object. This
+// function returns an error if the event object does not exist or is
+// otherwise invalid.
+func newEventProto(e *types.Event) (eventpb *svcpb.Event, err error) {
+	var time *timestamppb.Timestamp
+	if e == nil {
+		return
+	}
+	time, err = ptypes.TimestampProto(e.Time)
+	if err != nil {
+		err = fmt.Errorf(
+			"cannot convert event timestamp to proto: %s",
+			err,
+		)
+		return
+	}
+	eventpb = &svcpb.Event{
+		Subject: e.SubjectName,
+		Kind:    e.Kind.Proto(),
+		Time:    time,
+	}
+	return
+}
+
+// newOperationMetadataProto constructs an operation metadata proto from
+// an Event object. The operation metadata proto is of type TestSessionMetadata,
+// marshalled to Any. This function returns an error if the metadata proto
+// cannot be constructred or cannot be marshalled to Any.
+func newOperationMetadataProto(e *types.Event) (metadatapb *anypb.Any, err error) {
+	var eventpb *svcpb.Event
+	eventpb, err = newEventProto(e)
+	if err != nil {
+		return
+	}
+	metadatapb, err = ptypes.MarshalAny(&svcpb.TestSessionMetadata{
+		LatestEvent:    eventpb,
+		ServiceVersion: Version,
+	})
+	if err != nil {
+		err = fmt.Errorf("could not format test metadata: %s", err)
+	}
+	return
+}
+
+// newOperationResponseProto constructs an operation response proto from an
+// Event object and a Session object. The Session object is only needed for the
+// creation time. The operation response proto is of type TestSessionResult,
+// marshalled to Any. This function returns an error if the response proto
+// cannot be constructed or cannot be marshalled to Any.
+func newOperationResponseProto(e *types.Event, s *types.Session) (responsepb *anypb.Any, err error) {
+	if (e == nil) || (!isOperationDone(e)) || (s == nil) {
+		err = fmt.Errorf("cannot calculate operation response: failed precondition check")
+		return
+	}
+	responsepb, err = ptypes.MarshalAny(&svcpb.TestSessionResult{
+		DriverLogs:  e.DriverLogs,
+		TimeElapsed: ptypes.DurationProto(s.CreateTime.Sub(e.Time)),
+	})
+	if err != nil {
+		err = fmt.Errorf(
+			"could not format test session result into operation response: %v",
+			err,
+		)
+	}
+	return
+}
+
+// newOperationErrorProto constructs an operation error proto from an Event
+// object. The error response proto is of type Status. This function returns
+// an error if the error proto cannot be constructed.
+func newOperationErrorProto(e *types.Event) (status *statuspb.Status, err error) {
+	if (e == nil) || (!isOperationDone(e)) || isOperationSuccess(e) {
+		err = fmt.Errorf("cannot calculate operation error: failed precondition check")
+		return
+	}
+	var statusCode int32
+	switch e.Kind {
+	case types.InternalErrorEvent:
+		statusCode = int32(codepb.Code_INTERNAL)
+	default:
+		statusCode = int32(codepb.Code_UNKNOWN)
+	}
+	status = &statuspb.Status{
+		Code:    statusCode,
+		Message: e.Description,
+	}
+	return
+}
+
+// newOperation constructs an operation proto from an Event object and a Session
+// object. This function returns en error if the operation proto cannot be
+// constructed.
+func newOperation(e *types.Event, s *types.Session) (o *lrpb.Operation, err error) {
+	if s == nil {
+		err = fmt.Errorf("operation must correspond to a session")
+		return
+	}
+	operationName := fmt.Sprintf("%s%s", operationNamePrefix, s.Name)
+	var metadatapb *anypb.Any
+	metadatapb, err = newOperationMetadataProto(e)
+	if err != nil {
+		return
+	}
+	done := isOperationDone(e)
+	success := isOperationSuccess(e)
+	operationpb := &lrpb.Operation{
+		Name:     operationName,
+		Metadata: metadatapb,
+		Done:     done,
+	}
+	if success {
+		var responsepb *anypb.Any
+		responsepb, err = newOperationResponseProto(e, s)
+		if err != nil {
+			return
+		}
+		operationpb.Result = &lrpb.Operation_Response{
+			Response: responsepb,
+		}
+	}
+	if done && !success {
+		var errorpb *statuspb.Status
+		errorpb, err = newOperationErrorProto(e)
+		if err != nil {
+			return
+		}
+		operationpb.Result = &lrpb.Operation_Error{
+			Error: errorpb,
+		}
+	}
+	o = operationpb
+	return
+}
+
+// ListOperations returns the list of operations. This function is not
+// implemented.
+func (o *OperationsServer) ListOperations(ctx context.Context, req *lrpb.ListOperationsRequest) (*lrpb.ListOperationsResponse, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+// GetOperation gets an operation. This function returns nil if the operation
+// name is invalid or does not correspond to an existing session in the Store.
+func (o *OperationsServer) GetOperation(ctx context.Context, req *lrpb.GetOperationRequest) (operation *lrpb.Operation, err error) {
+	var (
+		sessionName string
+		session     *types.Session
+		latestEvent *types.Event
+	)
+	sessionName, err = getSessionName(req.Name)
+	// TODO: Should unknown session return an operation?
+	if err != nil {
+		return
+	}
+	session = o.store.GetSession(sessionName)
+	if session == nil {
+		err = fmt.Errorf(
+			"operation name does not match an existing session: %q",
+			operation.Name,
+		)
+		return
+	}
+	latestEvent, err = o.store.GetLatestEvent(sessionName)
+	if err != nil {
+		err = fmt.Errorf("operation not found: %q", req.Name)
+		return
+	}
+	operation, err = newOperation(latestEvent, session)
+	return
+}
+
+// DeleteOperation deletes an operation. This function is not implemented.
+func (o *OperationsServer) DeleteOperation(ctx context.Context, req *lrpb.DeleteOperationRequest) (*emptypb.Empty, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+// CancelOperation cancels an operation. This function is not implemented.
+func (o *OperationsServer) CancelOperation(ctx context.Context, req *lrpb.CancelOperationRequest) (*emptypb.Empty, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+// WaitOperation waits for an operation to finish. This function is not
+// implemented.
+func (o *OperationsServer) WaitOperation(ctx context.Context, req *lrpb.WaitOperationRequest) (*lrpb.Operation, error) {
+	return nil, fmt.Errorf("not implemented")
 }
