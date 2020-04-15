@@ -116,11 +116,16 @@ message StartTestSessionRequest {
 
 message TestSessionResult {
   // The result for the scenario.
-  grpc.testing.ScenarioResult scenario_result = 1;
+  // TODO: Include this in the stable version.
+  // grpc.testing.ScenarioResult scenario_result = 1;
+
+  // The logs of the driver, which contain legible descriptions of the errors
+  // and any session results.
+  bytes driver_logs = 2;
 
   // The amount of time that this session lived, including all actions from
   // scheduling to termination.
-  google.protobuf.Duration time_elapsed = 2;
+  google.protobuf.Duration time_elapsed = 3;
 }
 
 message Event {
@@ -160,6 +165,9 @@ message Event {
 
   // The point in time when the event was noticed.
   google.protobuf.Timestamp time = 3;
+
+  // A string containing a description of the event, if applicable.
+  string description = 4;
 }
 
 message TestSessionMetadata {

@@ -16,6 +16,7 @@ package store
 
 import (
 	"testing"
+	"reflect"
 
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
@@ -86,7 +87,7 @@ func TestStorageServer(t *testing.T) {
 	if event == nil {
 		t.Fatalf("Error reading latest event: event is nil.")
 	}
-	if *event != *events[1] {
+	if !reflect.DeepEqual(event, events[1]) {
 		t.Fatalf("Error reading latest event: expected %q, got %q",
 			event.SubjectName, events[1].SubjectName)
 	}

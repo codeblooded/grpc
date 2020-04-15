@@ -41,9 +41,15 @@ type Event struct {
 	// Time is the point in time when the event was noticed.
 	Time time.Time
 
-	// Message is additional, unstructured information in a string. For example, it may describe
+	// Description is additional, unstructured information in a string. For example, it may describe
 	// inputs and and the error message with a ErrorEvent.
-	Message string
+	Description string
+
+	// DriverLogs contains a slice of bytes with the logs of the driver component. These logs
+	// contain a legible form of the results.
+	//
+	// This field will be nil unless Kind is a ErrorEvent, InternalErrorEvent, or DoneEvent).
+	DriverLogs []byte
 }
 
 // NewEvent instantiates an Event struct, setting its Timestamp to now and its SubjectName to the
@@ -54,7 +60,7 @@ func NewEvent(subject ResourceNamer, k EventKind, messageFmt string, args ...int
 		SubjectName: subject.ResourceName(),
 		Kind:        k,
 		Time:        time.Now(),
-		Message:     fmt.Sprintf(messageFmt, args...),
+		Description: fmt.Sprintf(messageFmt, args...),
 	}
 }
 
