@@ -161,7 +161,7 @@ func TestSpecBuilderEnv(t *testing.T) {
 	}
 
 	// check SCENARIO_JSON is always and only set on driver
-	cases := []struct {
+	scenarioCases := []struct {
 		componentKind   types.ComponentKind
 		includeScenario bool
 	}{
@@ -170,7 +170,7 @@ func TestSpecBuilderEnv(t *testing.T) {
 		{types.ClientComponent, false},
 	}
 
-	for _, c := range cases {
+	for _, c := range scenarioCases {
 		component := types.NewComponent(testContainerImage, c.componentKind)
 		var session *types.Session
 		if component.Kind == types.DriverComponent {
@@ -189,6 +189,34 @@ func TestSpecBuilderEnv(t *testing.T) {
 			}
 		}
 	}
+
+	// check WORKER_KIND is properly set on server and client
+	clientValue := "client"
+	serverValue := "server"
+	kindCases := []struct {
+		componentKind types.ComponentKind
+		workerKind *string
+	}{
+		{types.DriverComponent, nil},
+		{types.ClientComponent, &clientValue},
+		{types.ServerComponent, &serverValue},
+	}
+
+	for _, c := range kindCases {
+		component := types.NewComponent(testContainerImage, c.componentKind)
+		var session *types.Session
+		if component.Kind == types.DriverComponent {
+			session = types.NewSession(component, nil, nil)
+		} else {
+			session = types.NewSession(nil, []*types.Component{component}, nil)
+		}
+		sb := NewSpecBuilder(session, component)
+		got := getEnv(sb.Env(), "WORKER_KIND")
+
+		if !reflect.DeepEqual(got, c.workerKind) {
+			t.Errorf("expected WORKER_KIND to be '%v' for %v component, but got '%v'", strUnwrap(c.workerKind), c.componentKind, strUnwrap(got))
+		}
+	}
 }
 
 func getEnv(envs []apiv1.EnvVar, name string) *string {
@@ -198,4 +226,13 @@ func getEnv(envs []apiv1.EnvVar, name string) *string {
 		}
 	}
 	return nil
+}
+
+func strUnwrap(str *string) string {
+	val := "<nil>"
+	if str != nil {
+		return *str
+	}
+
+	return val
 }

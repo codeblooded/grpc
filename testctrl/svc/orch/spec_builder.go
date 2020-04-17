@@ -126,10 +126,21 @@ func (sb *SpecBuilder) Env() []apiv1.EnvVar {
 		})
 	}
 
-	if sb.component.Kind == types.DriverComponent {
+	switch sb.component.Kind {
+	case types.DriverComponent:
 		vars = append(vars, apiv1.EnvVar{
 			Name:  "SCENARIO_JSON",
 			Value: sb.scenarioJson(),
+		})
+	case types.ServerComponent:
+		vars = append(vars, apiv1.EnvVar{
+			Name:  "WORKER_KIND",
+			Value: "server",
+		})
+	case types.ClientComponent:
+		vars = append(vars, apiv1.EnvVar{
+			Name:  "WORKER_KIND",
+			Value: "client",
 		})
 	}
 
