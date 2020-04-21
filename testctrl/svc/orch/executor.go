@@ -29,24 +29,19 @@ func NewExecutor(index int, pcd PodCreateDeleter, watcher *Watcher) *Executor {
 }
 
 func (e *Executor) Execute(session *types.Session) error {
+	var err error
+
 	eventChan, _ := e.watcher.Subscribe(session.Name)
 	e.eventChan = eventChan
-
-	var err error
-	re := &RuntimeError{
-		Executor: e,
-		Session:  session,
-	}
-
 	e.session = session
 
 	if err = e.provision(e.pcd); err != nil {
-		re.Add(fmt.Errorf("failed to provision: %v", err))
+		err = fmt.Errorf("failed to provision: %v", err)
 		goto endSession
 	}
 
 	if err = e.monitor(); err != nil {
-		re.Add(fmt.Errorf("failed during test: %v", err))
+		err = fmt.Errorf("failed during test: %v", err)
 		goto endSession
 	}
 
@@ -57,10 +52,11 @@ endSession:
 	}
 
 	if err = e.clean(e.pcd); err != nil {
-		re.Add(fmt.Errorf("failed to teardown resources: %v", err))
+		glog.Errorf("executor[%v]: failed to teardown resources for session %v: %v",
+			e.name, session.Name, err)
 	}
 
-	return re.Wrap()
+	return err
 }
 
 func (e *Executor) provision(pc PodCreator) error {
@@ -157,53 +153,4 @@ func (e *Executor) getDriverLogs(plg PodLogGetter) ([]byte, error) {
 func (e *Executor) getLogs(plg PodLogGetter, podName string) ([]byte, error) {
 	req := plg.GetLogs(podName, &corev1.PodLogOptions{})
 	return req.DoRaw()
-}
-
-type RuntimeError struct {
-	Executor     *Executor
-	Session      *types.Session
-	Component    *types.Component
-	Message      string
-	NestedErrors []error
-}
-
-func (re *RuntimeError) Wrap() error {
-	if len(re.NestedErrors) < 1 {
-		return nil
-	}
-
-	return re
-}
-
-func (re *RuntimeError) Add(err error) {
-	re.NestedErrors = append(re.NestedErrors, err)
-}
-
-func (re *RuntimeError) Error() string {
-	b := &strings.Builder{}
-
-	if re.Executor != nil {
-		b.WriteString(fmt.Sprintf("executor[%v]: ", re.Executor.name))
-	}
-
-	if re.Session != nil {
-		b.WriteString(fmt.Sprintf("session %v ", re.Session.Name))
-	}
-
-	if re.Component != nil {
-		b.WriteString(fmt.Sprintf("%v component %v ",
-			strings.ToLower(re.Component.Kind.String()), re.Component.Name))
-	}
-
-	count := len(re.NestedErrors)
-	b.WriteString(fmt.Sprintf("had %d errors: ", count))
-
-	for i, e := range re.NestedErrors {
-		b.WriteString(fmt.Sprintf("(%d) %v", i+1, e.Error()))
-		if (i + 1) != count {
-			b.WriteString(", ")
-		}
-	}
-
-	return b.String()
 }
