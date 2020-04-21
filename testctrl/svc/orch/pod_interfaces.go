@@ -25,6 +25,11 @@ type PodCreateDeleter interface {
 	PodLogGetter
 }
 
-type podWatcher interface {
+type PodWatcher interface {
 	Watch(metav1.ListOptions) (watch.Interface, error)
+}
+
+type PodInterface interface {
+	PodCreateDeleter
+	PodWatcher
 }
