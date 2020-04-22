@@ -31,9 +31,7 @@ func NewExecutor(index int, pcd PodCreateDeleter, watcher *Watcher) *Executor {
 func (e *Executor) Execute(session *types.Session) error {
 	var err error
 
-	eventChan, _ := e.watcher.Subscribe(session.Name)
-	e.eventChan = eventChan
-	e.session = session
+	e.setSession(session)
 
 	if err = e.provision(e.pcd); err != nil {
 		err = fmt.Errorf("failed to provision: %v", err)
@@ -153,4 +151,10 @@ func (e *Executor) getDriverLogs(plg PodLogGetter) ([]byte, error) {
 func (e *Executor) getLogs(plg PodLogGetter, podName string) ([]byte, error) {
 	req := plg.GetLogs(podName, &corev1.PodLogOptions{})
 	return req.DoRaw()
+}
+
+func (e *Executor) setSession(session *types.Session) {
+	eventChan, _ := e.watcher.Subscribe(session.Name)
+	e.eventChan = eventChan
+	e.session = session
 }
