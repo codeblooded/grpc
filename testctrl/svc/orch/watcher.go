@@ -22,23 +22,25 @@ import (
 // Create watcher instances with the NewWatcher constructor, not a literal.
 type Watcher struct {
 	eventChans map[string]chan *PodWatchEvent
+	pw         podWatcher
 	quit       chan struct{}
 	mux        sync.Mutex
 	wi         watch.Interface
 }
 
 // NewWatcher creates and prepares a new watcher instance.
-func NewWatcher() *Watcher {
+func NewWatcher(pw podWatcher) *Watcher {
 	return &Watcher{
 		eventChans: make(map[string]chan *PodWatchEvent),
+		pw:         pw,
 		quit:       make(chan struct{}),
 	}
 }
 
 // Start creates a new thread that listens for kubernetes events, forwarding them to subscribers.
 // It returns an error if there is a problem with kubernetes.
-func (w *Watcher) Start(pw podWatcher) error {
-	wi, err := pw.Watch(metav1.ListOptions{Watch: true})
+func (w *Watcher) Start() error {
+	wi, err := w.pw.Watch(metav1.ListOptions{Watch: true})
 	if err != nil {
 		return fmt.Errorf("could not start watcher: %v", err)
 	}

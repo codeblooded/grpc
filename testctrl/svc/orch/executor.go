@@ -33,7 +33,7 @@ func (e *executor) Execute(session *types.Session) error {
 
 	e.setSession(session)
 
-	if err = e.provision(e.pcd); err != nil {
+	if err = e.provision(); err != nil {
 		err = fmt.Errorf("failed to provision: %v", err)
 		goto endSession
 	}
@@ -44,12 +44,12 @@ func (e *executor) Execute(session *types.Session) error {
 	}
 
 endSession:
-	if logs, err := e.getDriverLogs(e.pcd); err == nil {
+	if logs, err := e.getDriverLogs(); err == nil {
 		glog.Infof("executor[%v]: found logs for component (driver) %v: %s",
 			e.name, e.session.Driver.Name, logs)
 	}
 
-	if err = e.clean(e.pcd); err != nil {
+	if err = e.clean(); err != nil {
 		glog.Errorf("executor[%v]: failed to teardown resources for session %v: %v",
 			e.name, session.Name, err)
 	}
@@ -57,7 +57,7 @@ endSession:
 	return err
 }
 
-func (e *executor) provision(pc podCreator) error {
+func (e *executor) provision() error {
 	var components []*types.Component
 	var workerIPs []string
 
@@ -75,7 +75,7 @@ func (e *executor) provision(pc podCreator) error {
 		glog.Infof("executor[%v]: creating %v component %v", e.name, kind, component.Name)
 
 		pod := newSpecBuilder(e.session, component).Pod()
-		if _, err := pc.Create(pod); err != nil {
+		if _, err := e.pcd.Create(pod); err != nil {
 			return fmt.Errorf("could not create %v component %v: %v", component.Name, kind, err)
 		}
 
@@ -129,14 +129,14 @@ func (e *executor) monitor() error {
 	}
 }
 
-func (e *executor) clean(pd podDeleter) error {
+func (e *executor) clean() error {
 	glog.Infof("executor[%v]: deleting components for session %v", e.name, e.session.Name)
 
 	listOpts := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("session-name=%v", e.session.Name),
 	}
 
-	err := pd.DeleteCollection(&metav1.DeleteOptions{}, listOpts)
+	err := e.pcd.DeleteCollection(&metav1.DeleteOptions{}, listOpts)
 	if err != nil {
 		return fmt.Errorf("unable to delete components: %v", err)
 	}
@@ -144,12 +144,12 @@ func (e *executor) clean(pd podDeleter) error {
 	return nil
 }
 
-func (e *executor) getDriverLogs(plg podLogGetter) ([]byte, error) {
-	return e.getLogs(plg, e.session.Driver.Name)
+func (e *executor) getDriverLogs() ([]byte, error) {
+	return e.getLogs(e.session.Driver.Name)
 }
 
-func (e *executor) getLogs(plg podLogGetter, podName string) ([]byte, error) {
-	req := plg.GetLogs(podName, &corev1.PodLogOptions{})
+func (e *executor) getLogs(podName string) ([]byte, error) {
+	req := e.pcd.GetLogs(podName, &corev1.PodLogOptions{})
 	return req.DoRaw()
 }
 

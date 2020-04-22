@@ -29,19 +29,19 @@ func TestWatcherStart(t *testing.T) {
 	var err error
 
 	// ensure pod watcher returns error when it fails to watch
-	w = NewWatcher()
 	mock, _ = newPodWatcherMock(errors.New("test error"))
+	w = NewWatcher(mock)
 
-	err = w.Start(mock)
+	err = w.Start()
 	if err == nil {
 		t.Errorf("failed to return error when watcher could not start")
 	}
 
 	// ensure pod watcher returns <nil> when it starts successfully
-	w = NewWatcher()
 	mock, _ = newPodWatcherMock(nil)
+	w = NewWatcher(mock)
 
-	err = w.Start(mock)
+	err = w.Start()
 	defer w.Stop()
 	if err != nil {
 		t.Errorf("returned an error when watcher started successfully")
@@ -53,10 +53,10 @@ func TestWatcherStop(t *testing.T) {
 	var mock *watcherMock
 	var err error
 
-	w = NewWatcher()
 	mock, wi := newPodWatcherMock(nil)
+	w = NewWatcher(mock)
 
-	if err = w.Start(mock); err != nil {
+	if err = w.Start(); err != nil {
 		t.Fatalf("setup failed, Start returned error: %v", err)
 	}
 
@@ -81,17 +81,17 @@ func TestWatcherSubscribe(t *testing.T) {
 	var event *PodWatchEvent
 	timeout := 100 * time.Millisecond
 
-	w := NewWatcher()
+	w := NewWatcher(nil)
 	sharedSessionName := "double-subscription"
 	_, _ = w.Subscribe(sharedSessionName)
 	if _, err = w.Subscribe(sharedSessionName); err == nil {
 		t.Errorf("did not return error for overriding subscription")
 	}
 
-	w = NewWatcher()
 	mock, wi := newPodWatcherMock(nil)
+	w = NewWatcher(mock)
 
-	if err = w.Start(mock); err != nil {
+	if err = w.Start(); err != nil {
 		t.Fatalf("setup failed, Start returned error: %v", err)
 	}
 
@@ -143,16 +143,16 @@ func TestWatcherUnsubscribe(t *testing.T) {
 	timeout := 100 * time.Millisecond
 
 	// test an error is returned without subscription
-	w := NewWatcher()
+	w := NewWatcher(nil)
 	if err := w.Unsubscribe("non-existent"); err == nil {
 		t.Errorf("did not return an error for Unsubscribe call without subscription")
 	}
 
 	// test unsubscription prevents further events from being sent
-	w = NewWatcher()
 	mock, wi := newPodWatcherMock(nil)
+	w = NewWatcher(mock)
 
-	if err = w.Start(mock); err != nil {
+	if err = w.Start(); err != nil {
 		t.Fatalf("setup failed, Start returned error: %v", err)
 	}
 

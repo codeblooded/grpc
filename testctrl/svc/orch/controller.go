@@ -46,7 +46,7 @@ type Controller struct {
 func NewController(clientset *kubernetes.Clientset) *Controller {
 	c := &Controller{
 		clientset: clientset,
-		watcher:   NewWatcher(),
+		watcher:   NewWatcher(clientset.CoreV1().Pods(corev1.NamespaceDefault)),
 	}
 	return c
 }
@@ -64,11 +64,13 @@ func (c *Controller) Schedule(s *types.Session) error {
 // number of sessions at a time. An error is returned if there are problems within the goroutines,
 // such as the inability to connect to the Kubernetes API.
 func (c *Controller) Start() error {
-	if err := c.setupQueue(c.clientset.CoreV1().Nodes()); err != nil {
+	waitQueue, err := setupQueue(c.clientset.CoreV1().Nodes())
+	if err != nil {
 		return fmt.Errorf("controller start failed when setting up queue: %v", err)
 	}
+	c.waitQueue = waitQueue
 
-	if err := c.watcher.Start(c.clientset.CoreV1().Pods(corev1.NamespaceDefault)); err != nil {
+	if err = c.watcher.Start(); err != nil {
 		return fmt.Errorf("controller start failed when starting watcher: %v", err)
 	}
 
@@ -106,27 +108,6 @@ func (c *Controller) Stop(timeout time.Duration) error {
 	return err
 }
 
-// setupQueue makes a request for available nodes, uses pool discovery logic to determine available
-// pools and capacities and configures the queue.
-func (c *Controller) setupQueue(nl NodeLister) error {
-	pools, err := FindPools(nl)
-	if err != nil {
-		return err
-	}
-
-	rm := NewReservationManager()
-	var poolNames []string
-
-	for name, pool := range pools {
-		poolNames = append(poolNames, name)
-		rm.AddPool(pool)
-	}
-
-	glog.Infof("discovered pools: %v", poolNames)
-	c.waitQueue = newQueue(rm)
-	return nil
-}
-
 func (c *Controller) waitAndAssign() {
 	for {
 		c.mux.Lock()
@@ -162,4 +143,24 @@ func (c *Controller) waitAndAssign() {
 			c.wg.Done()
 		}()
 	}
+}
+
+// setupQueue makes a request for available nodes, uses pool discovery logic to determine available
+// pools and capacities and configures the queue.
+func setupQueue(nl NodeLister) (*queue, error) {
+	pools, err := FindPools(nl)
+	if err != nil {
+		return nil, err
+	}
+
+	rm := NewReservationManager()
+	var poolNames []string
+
+	for name, pool := range pools {
+		poolNames = append(poolNames, name)
+		rm.AddPool(pool)
+	}
+
+	glog.Infof("discovered pools: %v", poolNames)
+	return newQueue(rm), nil
 }

@@ -42,7 +42,7 @@ func TestExecutorProvision(t *testing.T) {
 		}
 	}()
 
-	if err := e.provision(fakePodInf); err != nil {
+	if err := e.provision(); err != nil {
 		t.Fatalf("unexpected error in provision: %v", err)
 	}
 
@@ -103,7 +103,7 @@ func TestExecutorProvision(t *testing.T) {
 		}
 	}()
 
-	if err := e.provision(fakePodInf); err == nil {
+	if err := e.provision(); err == nil {
 		t.Errorf("unexpected error with failing pod")
 	}
 }
