@@ -130,7 +130,7 @@ func (sb *specBuilder) Env() []apiv1.EnvVar {
 	case types.DriverComponent:
 		vars = append(vars, apiv1.EnvVar{
 			Name:  "SCENARIO_JSON",
-			Value: sb.scenarioJson(),
+			Value: sb.scenarioJSON(),
 		})
 	case types.ServerComponent:
 		vars = append(vars, apiv1.EnvVar{
@@ -169,7 +169,7 @@ func (sb *specBuilder) Affinity() *apiv1.Affinity {
 	}
 }
 
-func (sb *specBuilder) scenarioJson() string {
+func (sb *specBuilder) scenarioJSON() string {
 	marshaler := &jsonpb.Marshaler{
 		Indent:      "",
 		EnumsAsInts: true,
