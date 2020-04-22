@@ -24,7 +24,7 @@ func TestExecutorProvision(t *testing.T) {
 	components := []*types.Component{server, client, driver}
 	session := types.NewSession(driver, components[:2], nil)
 
-	e := NewExecutor(0, fakePodInf, nil)
+	e := newExecutor(0, fakePodInf, nil)
 	eventChan := make(chan *PodWatchEvent)
 	e.eventChan = eventChan
 	e.session = session
@@ -76,7 +76,7 @@ func TestExecutorProvision(t *testing.T) {
 	components = []*types.Component{server, client, driver}
 	session = types.NewSession(driver, components[:2], nil)
 
-	e = NewExecutor(0, fakePodInf, nil)
+	e = newExecutor(0, fakePodInf, nil)
 	eventChan = make(chan *PodWatchEvent)
 	e.eventChan = eventChan
 	e.session = session
@@ -136,7 +136,7 @@ func TestExecutorMonitor(t *testing.T) {
 		components := []*types.Component{server, client, driver}
 		session := types.NewSession(driver, components[:2], nil)
 
-		e := NewExecutor(0, fakePodInf, nil)
+		e := newExecutor(0, fakePodInf, nil)
 		eventChan := make(chan *PodWatchEvent)
 		e.eventChan = eventChan
 		e.session = session
@@ -170,9 +170,9 @@ func TestExecutorMonitor(t *testing.T) {
 //	client := types.NewComponent(testContainerImage, types.ClientComponent)
 //
 //	session := types.NewSession(driver, []*types.Component{server, client}, nil)
-//	driverPod := NewSpecBuilder(session, driver).Pod()
-//	serverPod := NewSpecBuilder(session, server).Pod()
-//	clientPod := NewSpecBuilder(session, client).Pod()
+//	driverPod := newSpecBuilder(session, driver).Pod()
+//	serverPod := newSpecBuilder(session, server).Pod()
+//	clientPod := newSpecBuilder(session, client).Pod()
 //
 //	fakePodInf.Create(driverPod)
 //	fakePodInf.Create(serverPod)
@@ -184,7 +184,7 @@ func TestExecutorMonitor(t *testing.T) {
 //	}
 //	podCountBefore := len(pods)
 //
-//	e := NewExecutor(0, fakePodInf, nil)
+//	e := newExecutor(0, fakePodInf, nil)
 //	e.session = session
 //	if err = e.clean(fakePodInf); err != nil {
 //		t.Fatalf("returned an error unexpectedly: %v", err)

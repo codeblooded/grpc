@@ -25,7 +25,7 @@ func NewWatcher() *Watcher {
 	}
 }
 
-func (w *Watcher) Start(pw PodWatcher) error {
+func (w *Watcher) Start(pw podWatcher) error {
 	wi, err := pw.Watch(metav1.ListOptions{Watch: true})
 	if err != nil {
 		return fmt.Errorf("could not start watcher: %v", err)

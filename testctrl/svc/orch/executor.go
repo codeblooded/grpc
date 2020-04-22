@@ -12,23 +12,23 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type Executor struct {
+type executor struct {
 	name      string
 	watcher   *Watcher
 	eventChan <-chan *PodWatchEvent
 	session   *types.Session
-	pcd       PodCreateDeleter
+	pcd       podCreateDeleter
 }
 
-func NewExecutor(index int, pcd PodCreateDeleter, watcher *Watcher) *Executor {
-	return &Executor{
+func newExecutor(index int, pcd podCreateDeleter, watcher *Watcher) *executor {
+	return &executor{
 		name:    fmt.Sprintf("%d", index),
 		watcher: watcher,
 		pcd:     pcd,
 	}
 }
 
-func (e *Executor) Execute(session *types.Session) error {
+func (e *executor) Execute(session *types.Session) error {
 	var err error
 
 	e.setSession(session)
@@ -57,7 +57,7 @@ endSession:
 	return err
 }
 
-func (e *Executor) provision(pc PodCreator) error {
+func (e *executor) provision(pc podCreator) error {
 	var components []*types.Component
 	var workerIPs []string
 
@@ -74,7 +74,7 @@ func (e *Executor) provision(pc PodCreator) error {
 
 		glog.Infof("executor[%v]: creating %v component %v", e.name, kind, component.Name)
 
-		pod := NewSpecBuilder(e.session, component).Pod()
+		pod := newSpecBuilder(e.session, component).Pod()
 		if _, err := pc.Create(pod); err != nil {
 			return fmt.Errorf("could not create %v component %v: %v", component.Name, kind, err)
 		}
@@ -111,7 +111,7 @@ func (e *Executor) provision(pc PodCreator) error {
 	return nil
 }
 
-func (e *Executor) monitor() error {
+func (e *executor) monitor() error {
 	glog.Infof("executor[%v]: monitoring components while session %v runs", e.name, e.session.Name)
 
 	for {
@@ -129,7 +129,7 @@ func (e *Executor) monitor() error {
 	}
 }
 
-func (e *Executor) clean(pd PodDeleter) error {
+func (e *executor) clean(pd podDeleter) error {
 	glog.Infof("executor[%v]: deleting components for session %v", e.name, e.session.Name)
 
 	listOpts := metav1.ListOptions{
@@ -144,16 +144,16 @@ func (e *Executor) clean(pd PodDeleter) error {
 	return nil
 }
 
-func (e *Executor) getDriverLogs(plg PodLogGetter) ([]byte, error) {
+func (e *executor) getDriverLogs(plg podLogGetter) ([]byte, error) {
 	return e.getLogs(plg, e.session.Driver.Name)
 }
 
-func (e *Executor) getLogs(plg PodLogGetter, podName string) ([]byte, error) {
+func (e *executor) getLogs(plg podLogGetter, podName string) ([]byte, error) {
 	req := plg.GetLogs(podName, &corev1.PodLogOptions{})
 	return req.DoRaw()
 }
 
-func (e *Executor) setSession(session *types.Session) {
+func (e *executor) setSession(session *types.Session) {
 	eventChan, _ := e.watcher.Subscribe(session.Name)
 	e.eventChan = eventChan
 	e.session = session

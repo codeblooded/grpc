@@ -7,29 +7,24 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-type PodCreator interface {
+type podCreator interface {
 	Create(*corev1.Pod) (*corev1.Pod, error)
 }
 
-type PodDeleter interface {
+type podDeleter interface {
 	DeleteCollection(*metav1.DeleteOptions, metav1.ListOptions) error
 }
 
-type PodLogGetter interface {
+type podLogGetter interface {
 	GetLogs(podName string, opts *corev1.PodLogOptions) *rest.Request
 }
 
-type PodCreateDeleter interface {
-	PodCreator
-	PodDeleter
-	PodLogGetter
+type podCreateDeleter interface {
+	podCreator
+	podDeleter
+	podLogGetter
 }
 
-type PodWatcher interface {
+type podWatcher interface {
 	Watch(metav1.ListOptions) (watch.Interface, error)
-}
-
-type PodInterface interface {
-	PodCreateDeleter
-	PodWatcher
 }

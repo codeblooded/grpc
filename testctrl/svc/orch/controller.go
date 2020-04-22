@@ -34,7 +34,7 @@ const executorCount = 1
 type Controller struct {
 	clientset   *kubernetes.Clientset
 	watcher     *Watcher
-	queue       *Queue
+	waitQueue   *queue
 	activeCount int
 	mux         sync.Mutex
 	quit        bool
@@ -56,7 +56,7 @@ func NewController(clientset *kubernetes.Clientset) *Controller {
 // scheduling the session, such as invalid configurations.
 func (c *Controller) Schedule(s *types.Session) error {
 	// TODO(codeblooded): Add redundant validation checks
-	c.queue.Enqueue(s)
+	c.waitQueue.Enqueue(s)
 	return nil
 }
 
@@ -123,7 +123,7 @@ func (c *Controller) setupQueue(nl NodeLister) error {
 	}
 
 	glog.Infof("discovered pools: %v", poolNames)
-	c.queue = NewQueue(rm)
+	c.waitQueue = newQueue(rm)
 	return nil
 }
 
@@ -144,13 +144,13 @@ func (c *Controller) waitAndAssign() {
 		}
 
 	retryDequeue:
-		session := c.queue.Dequeue()
+		session := c.waitQueue.Dequeue()
 		if session == nil {
 			time.Sleep(5 * time.Second)
 			goto retryDequeue // loop until machines are available
 		}
 
-		executor := NewExecutor(0, c.clientset.CoreV1().Pods(corev1.NamespaceDefault), c.watcher)
+		executor := newExecutor(0, c.clientset.CoreV1().Pods(corev1.NamespaceDefault), c.watcher)
 		glog.Infof("controller: creating and started executor[%v]", executor.name)
 		c.activeCount++
 		c.wg.Add(1)
