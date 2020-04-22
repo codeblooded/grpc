@@ -11,6 +11,15 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 )
 
+// Watcher listens for changes to pods in a cluster and forwards these events through channels.
+//
+// The orch package creates pods for components in a session, labeling each with their session and
+// component names. This allows the Watcher to send events related to one session's pods through
+// one channel and another session through another channel. The channel that receives events for a
+// session is known as the subscriber. It is created and closed through the Subscribe and
+// Unsubscribe methods.
+//
+// Create watcher instances with the NewWatcher constructor, not a literal.
 type Watcher struct {
 	eventChans map[string]chan *PodWatchEvent
 	quit       chan struct{}
@@ -18,6 +27,7 @@ type Watcher struct {
 	wi         watch.Interface
 }
 
+// NewWatcher creates and prepares a new watcher instance.
 func NewWatcher() *Watcher {
 	return &Watcher{
 		eventChans: make(map[string]chan *PodWatchEvent),
@@ -25,6 +35,8 @@ func NewWatcher() *Watcher {
 	}
 }
 
+// Start creates a new thread that listens for kubernetes events, forwarding them to subscribers.
+// It returns an error if there is a problem with kubernetes.
 func (w *Watcher) Start(pw podWatcher) error {
 	wi, err := pw.Watch(metav1.ListOptions{Watch: true})
 	if err != nil {
@@ -36,11 +48,15 @@ func (w *Watcher) Start(pw podWatcher) error {
 	return nil
 }
 
+// Stop prevents additional events from being forwarded to subscribers.
 func (w *Watcher) Stop() {
 	close(w.quit)
 	w.wi.Stop()
 }
 
+// Subscribe accepts the name of a session and returns a channel or error. The channel will receive
+// a list of all events for pods labeled with this session. If there is already a subscriber for the
+// session, an error is returned.
 func (w *Watcher) Subscribe(sessionName string) (<-chan *PodWatchEvent, error) {
 	w.mux.Lock()
 	defer w.mux.Unlock()
@@ -55,6 +71,8 @@ func (w *Watcher) Subscribe(sessionName string) (<-chan *PodWatchEvent, error) {
 	return eventChan, nil
 }
 
+// Unsubscribe accepts the name of a session and prevents any subscriber channel from receiving events
+// additional events. If the session has no subscribers, it returns an error.
 func (w *Watcher) Unsubscribe(sessionName string) error {
 	w.mux.Lock()
 	defer w.mux.Unlock()
@@ -149,11 +167,23 @@ func (w *Watcher) diagnose(pod *corev1.Pod) (Health, error) {
 	return Unknown, nil
 }
 
+// PodWatchEvent is sent to a subscriber on a Watcher whenever there is a change.
 type PodWatchEvent struct {
-	SessionName   string
+	// SessionName is the name of the session to which the pod belongs.
+	SessionName string
+
+	// ComponentName is the name of the component this pod represents.
 	ComponentName string
-	Pod           *corev1.Pod
-	PodIP         string
-	Health        Health
-	Error         error
+
+	// Pod is the kubernetes objet itself.
+	Pod *corev1.Pod
+
+	// PodIP is the pod's IP if available. Otherwise, it is an empty string.
+	PodIP string
+
+	// Health is the current health of the pod.
+	Health Health
+
+	// Error may provide the error details that led to the failing health.
+	Error error
 }
