@@ -133,13 +133,19 @@ func (c *Controller) waitAndAssign() {
 
 		executor := newExecutor(0, c.clientset.CoreV1().Pods(corev1.NamespaceDefault), c.watcher)
 		glog.Infof("controller: creating and started executor[%v]", executor.name)
+		c.mux.Lock()
 		c.activeCount++
+		c.mux.Unlock()
 		c.wg.Add(1)
 
 		go func() {
 			if err := executor.Execute(session); err != nil {
 				glog.Infof("%v", err)
 			}
+
+			c.mux.Lock()
+			c.activeCount--
+			c.mux.Unlock()
 			c.wg.Done()
 		}()
 	}
