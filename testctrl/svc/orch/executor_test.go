@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,6 +13,72 @@ import (
 
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
+
+func TestExecutorExecute(t *testing.T) {
+	type action struct {
+		targetKind types.ComponentKind
+		status     corev1.ContainerStatus
+	}
+
+	cases := []struct {
+		description string
+		actions     []action
+		errors      bool
+	}{
+		{
+			description: "provision successful",
+			actions: []action{
+				{types.ServerComponent, ContainerStatus.running()},
+				{types.ClientComponent, ContainerStatus.running()},
+				{types.DriverComponent, ContainerStatus.running()},
+				{types.DriverComponent, ContainerStatus.terminated(0)},
+			},
+			errors: false,
+		},
+	}
+
+	for _, c := range cases {
+		kubeSim := newKubeSimulator()
+
+		watcher := NewWatcher(kubeSim)
+		watcher.Start()
+		defer watcher.Stop()
+
+		driver := types.NewComponent(testContainerImage, types.DriverComponent)
+		server := types.NewComponent(testContainerImage, types.ServerComponent)
+		client := types.NewComponent(testContainerImage, types.ClientComponent)
+		session := types.NewSession(driver, []*types.Component{server, client}, nil)
+
+		go func() {
+			time.Sleep(500 * time.Millisecond)
+
+			for _, a := range c.actions {
+				var target *types.Component
+
+				switch a.targetKind {
+				case types.DriverComponent:
+					target = driver
+				case types.ServerComponent:
+					target = server
+				case types.ClientComponent:
+					target = client
+				}
+
+				if err := kubeSim.setStatus(target, a.status); err != nil {
+					t.Fatalf("could not broadcast container status")
+				}
+			}
+		}()
+
+		e := newExecutor(0, kubeSim, watcher)
+		err := e.Execute(session)
+		if c.errors && err == nil {
+			t.Errorf("case '%v' did not return an error", c.description)
+		} else if !c.errors && err != nil {
+			t.Errorf("case '%v' unexpectedly returned an error: %v", c.description, err)
+		}
+	}
+}
 
 func TestExecutorProvision(t *testing.T) {
 	// test provision with successful pods
