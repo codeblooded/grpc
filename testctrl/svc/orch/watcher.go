@@ -53,7 +53,10 @@ func (w *Watcher) Start() error {
 // Stop prevents additional events from being forwarded to subscribers.
 func (w *Watcher) Stop() {
 	close(w.quit)
-	w.wi.Stop()
+
+	if w.wi != nil {
+		w.wi.Stop()
+	}
 }
 
 // Subscribe accepts the name of a session and returns a channel or error. The channel will receive

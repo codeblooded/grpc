@@ -7,13 +7,12 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeFake "k8s.io/client-go/kubernetes/fake"
 	corev1Fake "k8s.io/client-go/kubernetes/typed/core/v1/fake"
 
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
 
-func TestExecutorProvision(t *testing.T) {
+func TestKubeExecutorProvision(t *testing.T) {
 	// test provision with successful pods
 	fakePodInf := newFakePodInterface(t)
 
@@ -24,7 +23,7 @@ func TestExecutorProvision(t *testing.T) {
 	components := []*types.Component{server, client, driver}
 	session := types.NewSession(driver, components[:2], nil)
 
-	e := newExecutor(0, fakePodInf, nil)
+	e := newKubeExecutor(0, fakePodInf, nil)
 	eventChan := make(chan *PodWatchEvent)
 	e.eventChan = eventChan
 	e.session = session
@@ -76,7 +75,7 @@ func TestExecutorProvision(t *testing.T) {
 	components = []*types.Component{server, client, driver}
 	session = types.NewSession(driver, components[:2], nil)
 
-	e = newExecutor(0, fakePodInf, nil)
+	e = newKubeExecutor(0, fakePodInf, nil)
 	eventChan = make(chan *PodWatchEvent)
 	e.eventChan = eventChan
 	e.session = session
@@ -108,7 +107,7 @@ func TestExecutorProvision(t *testing.T) {
 	}
 }
 
-func TestExecutorMonitor(t *testing.T) {
+func TestKubeExecutorMonitor(t *testing.T) {
 	cases := []struct {
 		description string
 		event       *PodWatchEvent
@@ -126,43 +125,45 @@ func TestExecutorMonitor(t *testing.T) {
 		},
 	}
 
-	for _, c := range cases {
-		fakePodInf := newFakePodInterface(t)
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			fakePodInf := newFakePodInterface(t)
 
-		driver := types.NewComponent(testContainerImage, types.DriverComponent)
-		server := types.NewComponent(testContainerImage, types.ServerComponent)
-		client := types.NewComponent(testContainerImage, types.ClientComponent)
+			driver := types.NewComponent(testContainerImage, types.DriverComponent)
+			server := types.NewComponent(testContainerImage, types.ServerComponent)
+			client := types.NewComponent(testContainerImage, types.ClientComponent)
 
-		components := []*types.Component{server, client, driver}
-		session := types.NewSession(driver, components[:2], nil)
+			components := []*types.Component{server, client, driver}
+			session := types.NewSession(driver, components[:2], nil)
 
-		e := newExecutor(0, fakePodInf, nil)
-		eventChan := make(chan *PodWatchEvent)
-		e.eventChan = eventChan
-		e.session = session
+			e := newKubeExecutor(0, fakePodInf, nil)
+			eventChan := make(chan *PodWatchEvent)
+			e.eventChan = eventChan
+			e.session = session
 
-		go func() {
-			eventChan <- &PodWatchEvent{
-				SessionName:   session.Name,
-				ComponentName: driver.Name,
-				Pod:           c.event.Pod,
-				PodIP:         c.event.PodIP,
-				Health:        c.event.Health,
-				Error:         c.event.Error,
+			go func() {
+				eventChan <- &PodWatchEvent{
+					SessionName:   session.Name,
+					ComponentName: driver.Name,
+					Pod:           tc.event.Pod,
+					PodIP:         tc.event.PodIP,
+					Health:        tc.event.Health,
+					Error:         tc.event.Error,
+				}
+			}()
+
+			err := e.monitor()
+			if err == nil && tc.errors {
+				t.Errorf("case '%v' did not return error", tc.description)
+			} else if err != nil && !tc.errors {
+				t.Errorf("case '%v' unexpectedly returned error '%v'", tc.description, err)
 			}
-		}()
-
-		err := e.monitor()
-		if err == nil && c.errors {
-			t.Errorf("case '%v' did not return error", c.description)
-		} else if err != nil && !c.errors {
-			t.Errorf("case '%v' unexpectedly returned error '%v'", c.description, err)
-		}
+		})
 	}
 }
 
 // TODO(@codeblooded): Refactor clean method, or choose to not test this method
-//func TestExecutorClean(t *testing.T) {
+//func TestKubeExecutorClean(t *testing.T) {
 //	fakePodInf := newFakePodInterface(t)
 //
 //	driver := types.NewComponent(testContainerImage, types.DriverComponent)
@@ -184,7 +185,7 @@ func TestExecutorMonitor(t *testing.T) {
 //	}
 //	podCountBefore := len(pods)
 //
-//	e := newExecutor(0, fakePodInf, nil)
+//	e := newKubeExecutor(0, fakePodInf, nil)
 //	e.session = session
 //	if err = e.clean(fakePodInf); err != nil {
 //		t.Fatalf("returned an error unexpectedly: %v", err)
@@ -209,14 +210,4 @@ func listPods(t *testing.T, fakePodInf *corev1Fake.FakePods) ([]corev1.Pod, erro
 		return nil, errors.New("setup failed, could not fetch pod list from kubernetes fake")
 	}
 	return podList.Items, nil
-}
-
-func newKubernetesFake(t *testing.T) *kubeFake.Clientset {
-	t.Helper()
-	return kubeFake.NewSimpleClientset()
-}
-
-func newFakePodInterface(t *testing.T) *corev1Fake.FakePods {
-	t.Helper()
-	return newKubernetesFake(t).CoreV1().Pods(corev1.NamespaceDefault).(*corev1Fake.FakePods)
 }

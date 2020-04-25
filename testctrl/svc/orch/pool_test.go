@@ -15,67 +15,96 @@
 package orch
 
 import (
+	"errors"
+	"reflect"
 	"testing"
 
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestFindPools(t *testing.T) {
-	// Test that pools can be discovered from listing all kubernetes nodes
-	poolNames := []string{"drivers", "workers-8core", "workers-32core"}
-	nodes := makeNodesInPools(map[string]int{
-		poolNames[0]: 1,
-		poolNames[1]: 3,
-		poolNames[2]: 3,
-	})
-	mnl := &mockNodeLister{nodes}
+	cases := []struct {
+		description string
+		nodes       []corev1.Node
+		pools       map[string]Pool
+	}{
+		{
+			description: "all nodes have pool label",
+			nodes: []corev1.Node{
+				newNodeInPool(t, "pool-one"),
 
-	pools, err := FindPools(mnl)
-	if err != nil {
-		t.Fatalf("unexpected error in find pools using node lister: %v", err)
-	}
-	for _, poolName := range poolNames {
-		if _, ok := pools[poolName]; !ok {
-			t.Errorf("pool %v not found", poolName)
-		}
-	}
-}
+				newNodeInPool(t, "pool-two"),
+				newNodeInPool(t, "pool-two"),
+				newNodeInPool(t, "pool-two"),
 
-type mockNodeLister struct {
-	Nodes []v1.Node
-}
+				newNodeInPool(t, "pool-three"),
+				newNodeInPool(t, "pool-three"),
+				newNodeInPool(t, "pool-three"),
+			},
+			pools: map[string]Pool{
+				"pool-one":   {Name: "pool-one", Available: 1, Capacity: 1},
+				"pool-two":   {Name: "pool-two", Available: 3, Capacity: 3},
+				"pool-three": {Name: "pool-three", Available: 3, Capacity: 3},
+			},
+		},
+		{
+			description: "nodes with missing labels ignored",
+			nodes: []corev1.Node{
+				newNodeInPool(t, "pool-one"),
 
-func (mnl *mockNodeLister) List(_ metav1.ListOptions) (*v1.NodeList, error) {
-	list := &v1.NodeList{
-		Items: mnl.Nodes,
-	}
-	return list, nil
-}
+				// node without any labels
+				{},
 
-// makeNodesInPools accepts a map with pool names as the string and the number of nodes as the
-// value. It returns a slice of fake kubernetes nodes with the appropriate pool labels.
-//
-// For example, 7 node instances can be generated with labels for 2 pools (3 with A, 4 with B):
-//
-//	nodes := makeNodesInPools(map[string]int{
-//		"A": 3,
-//		"B": 4,
-//	})
-func makeNodesInPools(nodeMap map[string]int) []v1.Node {
-	var nodes []v1.Node
-
-	for name, count := range nodeMap {
-		for i := 0; i < count; i++ {
-			nodes = append(nodes, v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"pool": name,
+				// node without pool label
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{
+							"unrelated-label": "true",
+						},
 					},
 				},
-			})
-		}
+			},
+			pools: map[string]Pool{
+				"pool-one": {Name: "pool-one", Available: 1, Capacity: 1},
+			},
+		},
 	}
 
-	return nodes
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			nlm := &nodeListerMock{nodes: tc.nodes}
+
+			pools, err := FindPools(nlm)
+			if err != nil {
+				t.Fatalf("unexpected error in find pools using node lister: %v", err)
+			}
+
+			if !reflect.DeepEqual(tc.pools, pools) {
+				t.Fatalf("expected pool mismatch, wanted %v but got %v", tc.pools, pools)
+			}
+		})
+	}
+
+	t.Run("kubernetes issue returns error", func(t *testing.T) {
+		nlm := &nodeListerMock{}
+		nlm.err = errors.New("fake kubernetes error")
+
+		_, err := FindPools(nlm)
+		if err == nil {
+			t.Fatalf("kubernetes issue did not return an error")
+		}
+	})
+}
+
+func newNodeInPool(t *testing.T, poolName string) corev1.Node {
+	t.Helper()
+
+	return corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				"pool": poolName,
+			},
+		},
+	}
 }
