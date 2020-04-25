@@ -32,30 +32,44 @@ const executorCount = 1
 
 // Controller manages active and idle sessions and their interactions with the Kubernetes API.
 type Controller struct {
-	clientset   *kubernetes.Clientset
+	pcd         podCreateDeleter
+	pw          podWatcher
+	nl          NodeLister
 	watcher     *Watcher
 	waitQueue   *queue
 	activeCount int
 	mux         sync.Mutex
-	quit        bool
+	running     bool
 	wg          sync.WaitGroup
 }
 
 // NewController constructs a Controller instance with a Kubernetes Clientset. This allows the
 // controller to communicate with the Kubernetes API.
-func NewController(clientset *kubernetes.Clientset) *Controller {
+func NewController(clientset kubernetes.Interface) *Controller {
+	coreV1Interface := clientset.CoreV1()
+	podInterface := coreV1Interface.Pods(corev1.NamespaceDefault)
+
 	c := &Controller{
-		clientset: clientset,
-		watcher:   NewWatcher(clientset.CoreV1().Pods(corev1.NamespaceDefault)),
+		pcd:       podInterface,
+		pw:        podInterface,
+		nl:        coreV1Interface.Nodes(),
+		watcher:   NewWatcher(podInterface),
 	}
 	return c
 }
 
 // Schedule adds a session to the controller's queue. It will remain in the queue until there are
-// sufficient resources for processing and monitoring. An error is returned if there are problems
-// scheduling the session, such as invalid configurations.
+// sufficient resources for processing and monitoring. An error is returned if the session is nil,
+// or the controller was not started.
 func (c *Controller) Schedule(s *types.Session) error {
-	// TODO(codeblooded): Add redundant validation checks
+	if s == nil {
+		return fmt.Errorf("cannot schedule a <nil> session")
+	}
+
+	if c.Stopped() {
+		return fmt.Errorf("controller was not started, cannot schedule sessions")
+	}
+
 	c.waitQueue.Enqueue(s)
 	return nil
 }
@@ -64,7 +78,11 @@ func (c *Controller) Schedule(s *types.Session) error {
 // number of sessions at a time. An error is returned if there are problems within the goroutines,
 // such as the inability to connect to the Kubernetes API.
 func (c *Controller) Start() error {
-	waitQueue, err := setupQueue(c.clientset.CoreV1().Nodes())
+	c.mux.Lock()
+	c.running = true
+	c.mux.Unlock()
+
+	waitQueue, err := c.setupQueue()
 	if err != nil {
 		return fmt.Errorf("controller start failed when setting up queue: %v", err)
 	}
@@ -87,17 +105,11 @@ func (c *Controller) Stop(timeout time.Duration) error {
 	var err error
 
 	c.mux.Lock()
-	c.quit = true
+	c.running = false
 	c.mux.Unlock()
 
-	executorsDone := make(chan struct{})
-	go func() {
-		c.wg.Wait()
-		close(executorsDone)
-	}()
-
 	select {
-	case <-executorsDone:
+	case <-c.awaitExecutorsDone():
 		glog.Infof("controller: executors safely exited")
 	case <-time.After(timeout):
 		glog.Warning("controller: unable to wait for executors to safely exit, timed out")
@@ -110,10 +122,7 @@ func (c *Controller) Stop(timeout time.Duration) error {
 
 func (c *Controller) waitAndAssign() {
 	for {
-		c.mux.Lock()
-		quit := c.quit
-		activeCount := c.activeCount
-		c.mux.Unlock()
+		activeCount, quit := c.activeExecutors()
 
 		if quit {
 			return
@@ -131,30 +140,22 @@ func (c *Controller) waitAndAssign() {
 			goto retryDequeue // loop until machines are available
 		}
 
-		executor := newExecutor(0, c.clientset.CoreV1().Pods(corev1.NamespaceDefault), c.watcher)
+		executor := newExecutor(0, c.pcd, c.watcher)
 		glog.Infof("controller: creating and started executor[%v]", executor.name)
-		c.mux.Lock()
-		c.activeCount++
-		c.mux.Unlock()
-		c.wg.Add(1)
+		c.incExecutors()
 
 		go func() {
+			defer c.decExecutors()
+
 			if err := executor.Execute(session); err != nil {
 				glog.Infof("%v", err)
 			}
-
-			c.mux.Lock()
-			c.activeCount--
-			c.mux.Unlock()
-			c.wg.Done()
 		}()
 	}
 }
 
-// setupQueue makes a request for available nodes, uses pool discovery logic to determine available
-// pools and capacities and configures the queue.
-func setupQueue(nl NodeLister) (*queue, error) {
-	pools, err := FindPools(nl)
+func (c *Controller) setupQueue() (*queue, error) {
+	pools, err := FindPools(c.nl)
 	if err != nil {
 		return nil, err
 	}
@@ -169,4 +170,41 @@ func setupQueue(nl NodeLister) (*queue, error) {
 
 	glog.Infof("discovered pools: %v", poolNames)
 	return newQueue(rm), nil
+}
+
+func (c *Controller) incExecutors() {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	c.activeCount++
+	c.wg.Add(1)
+}
+
+func (c *Controller) decExecutors() {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	c.activeCount--
+	c.wg.Done()
+}
+
+func (c *Controller) awaitExecutorsDone() chan struct{} {
+	done := make(chan struct{})
+
+	go func() {
+		c.wg.Wait()
+		close(done)
+	}()
+
+	return done
+}
+
+func (c *Controller) Stopped() bool {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	return !c.running
+}
+
+func (c *Controller) activeExecutors() (count int, quit bool) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	return c.activeCount, !c.running
 }

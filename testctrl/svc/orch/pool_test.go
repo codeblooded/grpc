@@ -29,7 +29,7 @@ func TestFindPools(t *testing.T) {
 		poolNames[1]: 3,
 		poolNames[2]: 3,
 	})
-	mnl := &mockNodeLister{nodes}
+	mnl := &mockNodeLister{Nodes: nodes}
 
 	pools, err := FindPools(mnl)
 	if err != nil {
@@ -44,12 +44,18 @@ func TestFindPools(t *testing.T) {
 
 type mockNodeLister struct {
 	Nodes []v1.Node
+	Error error
 }
 
 func (mnl *mockNodeLister) List(_ metav1.ListOptions) (*v1.NodeList, error) {
+	if mnl.Error != nil {
+		return nil, mnl.Error
+	}
+
 	list := &v1.NodeList{
 		Items: mnl.Nodes,
 	}
+
 	return list, nil
 }
 

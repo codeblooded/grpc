@@ -5,6 +5,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
@@ -81,4 +82,21 @@ func strUnwrap(str *string) string {
 	}
 
 	return val
+}
+
+type podWatcherMock struct {
+	wi  watch.Interface
+	err error
+}
+
+func (pwm *podWatcherMock) Watch(listOpts metav1.ListOptions) (watch.Interface, error) {
+	if pwm.err != nil {
+		return nil, pwm.err
+	}
+
+	if pwm.wi == nil {
+		return watch.NewRaceFreeFake(), nil
+	}
+
+	return pwm.wi, nil
 }

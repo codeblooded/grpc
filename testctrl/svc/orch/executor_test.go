@@ -127,37 +127,39 @@ func TestExecutorMonitor(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		fakePodInf := newFakePodInterface(t)
+		t.Run(c.description, func(t *testing.T) {
+			fakePodInf := newFakePodInterface(t)
 
-		driver := types.NewComponent(testContainerImage, types.DriverComponent)
-		server := types.NewComponent(testContainerImage, types.ServerComponent)
-		client := types.NewComponent(testContainerImage, types.ClientComponent)
+			driver := types.NewComponent(testContainerImage, types.DriverComponent)
+			server := types.NewComponent(testContainerImage, types.ServerComponent)
+			client := types.NewComponent(testContainerImage, types.ClientComponent)
 
-		components := []*types.Component{server, client, driver}
-		session := types.NewSession(driver, components[:2], nil)
+			components := []*types.Component{server, client, driver}
+			session := types.NewSession(driver, components[:2], nil)
 
-		e := newExecutor(0, fakePodInf, nil)
-		eventChan := make(chan *PodWatchEvent)
-		e.eventChan = eventChan
-		e.session = session
+			e := newExecutor(0, fakePodInf, nil)
+			eventChan := make(chan *PodWatchEvent)
+			e.eventChan = eventChan
+			e.session = session
 
-		go func() {
-			eventChan <- &PodWatchEvent{
-				SessionName:   session.Name,
-				ComponentName: driver.Name,
-				Pod:           c.event.Pod,
-				PodIP:         c.event.PodIP,
-				Health:        c.event.Health,
-				Error:         c.event.Error,
+			go func() {
+				eventChan <- &PodWatchEvent{
+					SessionName:   session.Name,
+					ComponentName: driver.Name,
+					Pod:           c.event.Pod,
+					PodIP:         c.event.PodIP,
+					Health:        c.event.Health,
+					Error:         c.event.Error,
+				}
+			}()
+
+			err := e.monitor()
+			if err == nil && c.errors {
+				t.Errorf("case '%v' did not return error", c.description)
+			} else if err != nil && !c.errors {
+				t.Errorf("case '%v' unexpectedly returned error '%v'", c.description, err)
 			}
-		}()
-
-		err := e.monitor()
-		if err == nil && c.errors {
-			t.Errorf("case '%v' did not return error", c.description)
-		} else if err != nil && !c.errors {
-			t.Errorf("case '%v' unexpectedly returned error '%v'", c.description, err)
-		}
+		})
 	}
 }
 
