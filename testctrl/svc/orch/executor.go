@@ -12,7 +12,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type executor struct {
+type Executor interface {
+	Execute(*types.Session) error
+}
+
+type kubeExecutor struct {
 	name      string
 	watcher   *Watcher
 	eventChan <-chan *PodWatchEvent
@@ -20,50 +24,50 @@ type executor struct {
 	pcd       podCreateDeleter
 }
 
-func newExecutor(index int, pcd podCreateDeleter, watcher *Watcher) *executor {
-	return &executor{
+func newKubeExecutor(index int, pcd podCreateDeleter, watcher *Watcher) *kubeExecutor {
+	return &kubeExecutor{
 		name:    fmt.Sprintf("%d", index),
 		watcher: watcher,
 		pcd:     pcd,
 	}
 }
 
-func (e *executor) Execute(session *types.Session) error {
+func (k *kubeExecutor) Execute(session *types.Session) error {
 	var err error
 
-	e.setSession(session)
+	k.setSession(session)
 
-	if err = e.provision(); err != nil {
+	if err = k.provision(); err != nil {
 		err = fmt.Errorf("failed to provision: %v", err)
 		goto endSession
 	}
 
-	if err = e.monitor(); err != nil {
+	if err = k.monitor(); err != nil {
 		err = fmt.Errorf("failed during test: %v", err)
 		goto endSession
 	}
 
 endSession:
-	if logs, err := e.getDriverLogs(); err == nil {
-		glog.Infof("executor[%v]: found logs for component (driver) %v: %s",
-			e.name, e.session.Driver.Name, logs)
+	if logs, err := k.getDriverLogs(); err == nil {
+		glog.Infof("kubeExecutor[%v]: found logs for component (driver) %v: %s",
+			k.name, k.session.Driver.Name, logs)
 	}
 
-	if err = e.clean(); err != nil {
-		glog.Errorf("executor[%v]: failed to teardown resources for session %v: %v",
-			e.name, session.Name, err)
+	if err = k.clean(); err != nil {
+		glog.Errorf("kubeExecutor[%v]: failed to teardown resources for session %v: %v",
+			k.name, session.Name, err)
 	}
 
 	return err
 }
 
-func (e *executor) provision() error {
+func (k *kubeExecutor) provision() error {
 	var components []*types.Component
 	var workerIPs []string
 
-	components = append(components, e.session.ServerWorkers()...)
-	components = append(components, e.session.ClientWorkers()...)
-	components = append(components, e.session.Driver)
+	components = append(components, k.session.ServerWorkers()...)
+	components = append(components, k.session.ClientWorkers()...)
+	components = append(components, k.session.Driver)
 
 	for _, component := range components {
 		kind := strings.ToLower(component.Kind.String())
@@ -72,24 +76,24 @@ func (e *executor) provision() error {
 			component.Env["QPS_WORKERS"] = strings.Join(workerIPs, ",")
 		}
 
-		glog.Infof("executor[%v]: creating %v component %v", e.name, kind, component.Name)
+		glog.Infof("kubeExecutor[%v]: creating %v component %v", k.name, kind, component.Name)
 
-		pod := newSpecBuilder(e.session, component).Pod()
-		if _, err := e.pcd.Create(pod); err != nil {
+		pod := newSpecBuilder(k.session, component).Pod()
+		if _, err := k.pcd.Create(pod); err != nil {
 			return fmt.Errorf("could not create %v component %v: %v", component.Name, kind, err)
 		}
 
 		for {
 			select {
-			case event := <-e.eventChan:
+			case event := <-k.eventChan:
 				switch event.Health {
 				case Ready:
 					ip := event.PodIP
 					if len(ip) > 0 {
 						host := ip + ":10000"
 						workerIPs = append(workerIPs, host)
-						glog.V(2).Infof("executor[%v]: component %v was assigned IP address %v",
-							e.name, event.ComponentName, ip)
+						glog.V(2).Infof("kubeExecutor[%v]: component %v was assigned IP address %v",
+							k.name, event.ComponentName, ip)
 						goto componentProvisioned
 
 					}
@@ -105,18 +109,18 @@ func (e *executor) provision() error {
 		}
 
 	componentProvisioned:
-		glog.V(2).Infof("executor[%v]: %v component %v is now ready", e.name, kind, component.Name)
+		glog.V(2).Infof("kubeExecutor[%v]: %v component %v is now ready", k.name, kind, component.Name)
 	}
 
 	return nil
 }
 
-func (e *executor) monitor() error {
-	glog.Infof("executor[%v]: monitoring components while session %v runs", e.name, e.session.Name)
+func (k *kubeExecutor) monitor() error {
+	glog.Infof("kubeExecutor[%v]: monitoring components while session %v runs", k.name, k.session.Name)
 
 	for {
 		select {
-		case event := <-e.eventChan:
+		case event := <-k.eventChan:
 			switch event.Health {
 			case Succeeded:
 				return nil // no news is good news :)
@@ -129,14 +133,14 @@ func (e *executor) monitor() error {
 	}
 }
 
-func (e *executor) clean() error {
-	glog.Infof("executor[%v]: deleting components for session %v", e.name, e.session.Name)
+func (k *kubeExecutor) clean() error {
+	glog.Infof("kubeExecutor[%v]: deleting components for session %v", k.name, k.session.Name)
 
 	listOpts := metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("session-name=%v", e.session.Name),
+		LabelSelector: fmt.Sprintf("session-name=%v", k.session.Name),
 	}
 
-	err := e.pcd.DeleteCollection(&metav1.DeleteOptions{}, listOpts)
+	err := k.pcd.DeleteCollection(&metav1.DeleteOptions{}, listOpts)
 	if err != nil {
 		return fmt.Errorf("unable to delete components: %v", err)
 	}
@@ -144,17 +148,17 @@ func (e *executor) clean() error {
 	return nil
 }
 
-func (e *executor) getDriverLogs() ([]byte, error) {
-	return e.getLogs(e.session.Driver.Name)
+func (k *kubeExecutor) getDriverLogs() ([]byte, error) {
+	return k.getLogs(k.session.Driver.Name)
 }
 
-func (e *executor) getLogs(podName string) ([]byte, error) {
-	req := e.pcd.GetLogs(podName, &corev1.PodLogOptions{})
+func (k *kubeExecutor) getLogs(podName string) ([]byte, error) {
+	req := k.pcd.GetLogs(podName, &corev1.PodLogOptions{})
 	return req.DoRaw()
 }
 
-func (e *executor) setSession(session *types.Session) {
-	eventChan, _ := e.watcher.Subscribe(session.Name)
-	e.eventChan = eventChan
-	e.session = session
+func (k *kubeExecutor) setSession(session *types.Session) {
+	eventChan, _ := k.watcher.Subscribe(session.Name)
+	k.eventChan = eventChan
+	k.session = session
 }

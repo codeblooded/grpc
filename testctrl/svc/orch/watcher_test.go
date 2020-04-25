@@ -5,56 +5,51 @@ import (
 	"testing"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 )
 
-func newPodWatcherMock(err error) (*watcherMock, *watch.RaceFreeFakeWatcher) {
-	fake := watch.NewRaceFreeFake()
-	mock := &watcherMock{
-		watchFunc: func(metav1.ListOptions) (watch.Interface, error) {
-			if err != nil {
-				return nil, err
-			}
-
-			return fake, nil
+func TestWatcherStart(t *testing.T) {
+	cases := []struct {
+		description string
+		mock        *podWatcherMock
+		shouldError bool
+	}{
+		{
+			description: "kubernetes watch error",
+			mock:        &podWatcherMock{err: errors.New("fake kubernetes error")},
+			shouldError: true,
+		},
+		{
+			description: "successful start",
+			mock:        &podWatcherMock{},
+			shouldError: false,
 		},
 	}
-	return mock, fake
-}
 
-func TestWatcherStart(t *testing.T) {
-	var w *Watcher
-	var mock *watcherMock
-	var err error
+	for _, c := range cases {
+		t.Run(c.description, func(t *testing.T) {
+			w := NewWatcher(c.mock)
 
-	// ensure pod watcher returns error when it fails to watch
-	mock, _ = newPodWatcherMock(errors.New("test error"))
-	w = NewWatcher(mock)
+			defer w.Stop()
+			err := w.Start()
 
-	err = w.Start()
-	if err == nil {
-		t.Errorf("failed to return error when watcher could not start")
-	}
-
-	// ensure pod watcher returns <nil> when it starts successfully
-	mock, _ = newPodWatcherMock(nil)
-	w = NewWatcher(mock)
-
-	err = w.Start()
-	defer w.Stop()
-	if err != nil {
-		t.Errorf("returned an error when watcher started successfully")
+			didError := err != nil
+			if didError && !c.shouldError {
+				t.Errorf("unexpectedly returned an error '%v'", err)
+			}
+			if !didError && c.shouldError {
+				t.Errorf("unexpectedly returned <nil>, instead of an error")
+			}
+		})
 	}
 }
 
 func TestWatcherStop(t *testing.T) {
-	var w *Watcher
-	var mock *watcherMock
 	var err error
 
-	mock, wi := newPodWatcherMock(nil)
-	w = NewWatcher(mock)
+	wi := watch.NewRaceFreeFake()
+	mock := &podWatcherMock{wi: wi}
+	w := NewWatcher(mock)
 
 	if err = w.Start(); err != nil {
 		t.Fatalf("setup failed, Start returned error: %v", err)
@@ -79,7 +74,7 @@ func TestWatcherStop(t *testing.T) {
 func TestWatcherSubscribe(t *testing.T) {
 	var err error
 	var event *PodWatchEvent
-	timeout := 100 * time.Millisecond
+	timeout := 100 * time.Millisecond * timeMultiplier
 
 	w := NewWatcher(nil)
 	sharedSessionName := "double-subscription"
@@ -88,7 +83,8 @@ func TestWatcherSubscribe(t *testing.T) {
 		t.Errorf("did not return error for overriding subscription")
 	}
 
-	mock, wi := newPodWatcherMock(nil)
+	wi := watch.NewRaceFreeFake()
+	mock := &podWatcherMock{wi: wi}
 	w = NewWatcher(mock)
 
 	if err = w.Start(); err != nil {
@@ -140,48 +136,45 @@ func TestWatcherSubscribe(t *testing.T) {
 
 func TestWatcherUnsubscribe(t *testing.T) {
 	var err error
-	timeout := 100 * time.Millisecond
+	timeout := 100 * time.Millisecond * timeMultiplier
 
 	// test an error is returned without subscription
-	w := NewWatcher(nil)
-	if err := w.Unsubscribe("non-existent"); err == nil {
-		t.Errorf("did not return an error for Unsubscribe call without subscription")
-	}
+	t.Run("no subscription", func(t *testing.T) {
+		w := NewWatcher(nil)
+		if err := w.Unsubscribe("non-existent"); err == nil {
+			t.Errorf("did not return an error for Unsubscribe call without subscription")
+		}
+	})
 
 	// test unsubscription prevents further events from being sent
-	mock, wi := newPodWatcherMock(nil)
-	w = NewWatcher(mock)
+	t.Run("prevents further events", func(t *testing.T) {
+		wi := watch.NewRaceFreeFake()
+		mock := &podWatcherMock{wi: wi}
+		w := NewWatcher(mock)
 
-	if err = w.Start(); err != nil {
-		t.Fatalf("setup failed, Start returned error: %v", err)
-	}
-
-	sessionName := "session-one"
-	eventChan, err := w.Subscribe(sessionName)
-	if err != nil {
-		t.Fatalf("subscribe unexpectedly returned error for %v: %v", sessionName, err)
-	}
-
-	if err = w.Unsubscribe(sessionName); err != nil {
-		t.Fatalf("Unsubscribe unexpectedly returned error: %v", err)
-	}
-
-	wi.Add(newPodWithSessionName(t, sessionName))
-
-	select {
-	case event := <-eventChan:
-		if event != nil {
-			t.Errorf("received event unexpectedly: %v", event)
+		if err = w.Start(); err != nil {
+			t.Fatalf("setup failed, Start returned error: %v", err)
 		}
-	case <-time.After(timeout):
-		break // never passed is also valid
-	}
-}
 
-type watcherMock struct {
-	watchFunc func(metav1.ListOptions) (watch.Interface, error)
-}
+		sessionName := "session-one"
+		eventChan, err := w.Subscribe(sessionName)
+		if err != nil {
+			t.Fatalf("subscribe unexpectedly returned error for %v: %v", sessionName, err)
+		}
 
-func (wm *watcherMock) Watch(listOpts metav1.ListOptions) (watch.Interface, error) {
-	return wm.watchFunc(listOpts)
+		if err = w.Unsubscribe(sessionName); err != nil {
+			t.Fatalf("Unsubscribe unexpectedly returned error: %v", err)
+		}
+
+		wi.Add(newPodWithSessionName(t, sessionName))
+
+		select {
+		case event := <-eventChan:
+			if event != nil {
+				t.Errorf("received event unexpectedly: %v", event)
+			}
+		case <-time.After(timeout):
+			break // never passed is also valid
+		}
+	})
 }

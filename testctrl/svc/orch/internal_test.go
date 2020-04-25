@@ -1,13 +1,23 @@
 package orch
 
 import (
+	"sync"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
+	kubeFake "k8s.io/client-go/kubernetes/fake"
+	corev1Fake "k8s.io/client-go/kubernetes/typed/core/v1/fake"
 
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
+
+// timeMultiplier allows all test timeouts to be increased or decreased as a whole. This solution
+// was recommended by Mitchell Hashimoto's Advanced Testing in Go, see
+// <https://about.sourcegraph.com/go/advanced-testing-in-go>.
+const timeMultiplier time.Duration = 1
 
 // testContainerImage is a default container image supplied during component construction in tests.
 const testContainerImage = "example:latest"
@@ -81,4 +91,77 @@ func strUnwrap(str *string) string {
 	}
 
 	return val
+}
+
+type podWatcherMock struct {
+	wi  watch.Interface
+	err error
+}
+
+func (pwm *podWatcherMock) Watch(listOpts metav1.ListOptions) (watch.Interface, error) {
+	if pwm.err != nil {
+		return nil, pwm.err
+	}
+
+	if pwm.wi == nil {
+		return watch.NewRaceFreeFake(), nil
+	}
+
+	return pwm.wi, nil
+}
+
+type nodeListerMock struct {
+	Nodes []corev1.Node
+	Error error
+}
+
+func (nlm *nodeListerMock) List(_ metav1.ListOptions) (*corev1.NodeList, error) {
+	if nlm.Error != nil {
+		return nil, nlm.Error
+	}
+
+	list := &corev1.NodeList{
+		Items: nlm.Nodes,
+	}
+
+	return list, nil
+}
+
+func newKubernetesFake(t *testing.T) *kubeFake.Clientset {
+	t.Helper()
+	return kubeFake.NewSimpleClientset()
+}
+
+func newFakePodInterface(t *testing.T) *corev1Fake.FakePods {
+	t.Helper()
+	return newKubernetesFake(t).CoreV1().Pods(corev1.NamespaceDefault).(*corev1Fake.FakePods)
+}
+
+type executorMock struct {
+	err        error
+	mux        sync.Mutex
+	sideEffect func()
+	sessionArg *types.Session
+}
+
+func (em *executorMock) Execute(session *types.Session) error {
+	em.mux.Lock()
+	defer em.mux.Unlock()
+
+	em.sessionArg = session
+	if em.err != nil {
+		return em.err
+	}
+
+	if em.sideEffect != nil {
+		em.sideEffect()
+	}
+
+	return nil
+}
+
+func (em *executorMock) session() *types.Session {
+	em.mux.Lock()
+	defer em.mux.Unlock()
+	return em.sessionArg
 }
