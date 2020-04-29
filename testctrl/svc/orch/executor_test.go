@@ -103,7 +103,7 @@ func TestKubeExecutorProvision(t *testing.T) {
 	}()
 
 	if err := e.provision(); err == nil {
-		t.Errorf("unexpected error with failing pod")
+		t.Errorf("expected error for failing pod, but returned nil")
 	}
 }
 
