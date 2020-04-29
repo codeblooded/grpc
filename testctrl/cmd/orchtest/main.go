@@ -49,7 +49,7 @@ func main() {
 		glog.Fatalf("Invalid config file specified by the KUBE_CONFIG_FILE env variable, unable to connect: %v", err)
 	}
 
-	c := orch.NewController(clientset)
+	c, _ := orch.NewController(clientset)
 	if err := c.Start(); err != nil {
 		panic(err)
 	}

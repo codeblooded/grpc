@@ -15,6 +15,7 @@
 package orch
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -43,9 +44,13 @@ type Controller struct {
 	newExecutorFunc func() Executor
 }
 
-// NewController constructs a Controller instance with a Kubernetes Clientset. This allows the
-// controller to communicate with the Kubernetes API.
-func NewController(clientset kubernetes.Interface) *Controller {
+// NewController creates a controller using a Kubernetes clientset. This clientset allows the
+// controller to interact with Kubernetes, so it cannot be nil.
+func NewController(clientset kubernetes.Interface) (*Controller, error) {
+	if clientset == nil {
+		return nil, errors.New("cannot create controller from nil kubernetes clientset")
+	}
+
 	coreV1Interface := clientset.CoreV1()
 	podInterface := coreV1Interface.Pods(corev1.NamespaceDefault)
 
@@ -60,7 +65,7 @@ func NewController(clientset kubernetes.Interface) *Controller {
 		return newKubeExecutor(0, c.pcd, c.watcher)
 	}
 
-	return c
+	return c, nil
 }
 
 // Schedule adds a session to the controller's queue. It will remain in the queue until there are

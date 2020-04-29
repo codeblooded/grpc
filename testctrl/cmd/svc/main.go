@@ -79,7 +79,10 @@ func main() {
 		clientset = setupDevEnv(grpcServer)
 	}
 
-	controller := orch.NewController(clientset)
+	controller, err := orch.NewController(clientset)
+	if err != nil {
+		glog.Fatalf("could not create a controller: %v", err)
+	}
 
 	if err := controller.Start(); err != nil {
 		glog.Fatalf("unable to start orchestration controller: %v", err)
