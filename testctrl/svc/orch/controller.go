@@ -30,7 +30,8 @@ import (
 // executorCount specifies the maximum number of sessions that should be processed concurrently.
 const executorCount = 1
 
-// Controller manages active and idle sessions and their interactions with the Kubernetes API.
+// Controller serves as the coordinator for orchestrating sessions. It manages active and idle
+// sessions, as well as, interactions with Kubernetes through a set of a internal types.
 type Controller struct {
 	pcd             podCreateDeleter
 	pw              podWatcher
@@ -45,7 +46,8 @@ type Controller struct {
 }
 
 // NewController creates a controller using a Kubernetes clientset. This clientset allows the
-// controller to interact with Kubernetes, so it cannot be nil.
+// controller to interact with Kubernetes, so it cannot be nil. If it is nil, an error will be
+// returned instead of a controller instance.
 func NewController(clientset kubernetes.Interface) (*Controller, error) {
 	if clientset == nil {
 		return nil, errors.New("cannot create controller from nil kubernetes clientset")
@@ -68,9 +70,8 @@ func NewController(clientset kubernetes.Interface) (*Controller, error) {
 	return c, nil
 }
 
-// Schedule adds a session to the controller's queue. It will remain in the queue until there are
-// sufficient resources for processing and monitoring. An error is returned if the session is nil,
-// or the controller was not started.
+// Schedule adds a session to the list of sessions waiting to run. An error is returned if the
+// session is nil, or the controller was not started.
 func (c *Controller) Schedule(s *types.Session) error {
 	if s == nil {
 		return fmt.Errorf("cannot schedule a <nil> session")
@@ -84,9 +85,11 @@ func (c *Controller) Schedule(s *types.Session) error {
 	return nil
 }
 
-// Start spawns goroutines to monitor the Kubernetes cluster for updates and to process a limited
-// number of sessions at a time. An error is returned if there are problems within the goroutines,
-// such as the inability to connect to the Kubernetes API.
+// Start prepares a controller for session scheduling. It creates or configures a set of threads and
+// types to queue sessions, assign sessions to threads and communicate with kubernetes.
+//
+// An error is returned if there are problems preparing a queue or setting up a watcher to monitor
+// Kubernetes events.
 func (c *Controller) Start() error {
 	c.mux.Lock()
 	c.running = true
@@ -106,11 +109,14 @@ func (c *Controller) Start() error {
 	return nil
 }
 
-// Stop attempts to terminate all orchestration goroutines spawned by a call to Start. It waits for
-// executors to exit. Then, it kills the kubernetes watcher.
+// Stop attempts to terminate all orchestration threads spawned by a call to Start. It waits for a
+// graceful shutdown until for a specified timeout.
 //
-// If the timeout is reached before executors exit, an error is returned. The kubernetes watcher is
-// still terminated. Any sessions running on the unterminated executors will likely fail.
+// If the timeout is reached before shutdown, an improper shutdown will occur. This may result in
+// unpredictable states for running sessions and their resources. To signal these potential issues,
+// an error is returned when this occurs.
+//
+// If Start was not called prior to Stop, there will be no adverse effects and nil will be returned.
 func (c *Controller) Stop(timeout time.Duration) error {
 	defer c.watcher.Stop()
 
