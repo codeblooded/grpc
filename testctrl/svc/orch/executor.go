@@ -12,6 +12,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// Executor executes sessions, returning an error if there is a problem with the infrastructure.
+// Executors are expected to provision, monitor and clean up resources related to a session.
+// An error is not indicative of a success or failure of the tests, but signals an orchestration
+// issue.
 type Executor interface {
 	Execute(*types.Session) error
 }
