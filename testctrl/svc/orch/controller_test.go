@@ -135,6 +135,10 @@ func TestControllerStart(t *testing.T) {
 }
 
 func TestControllerStop(t *testing.T) {
+	timeout := 100 * time.Millisecond * timeMultiplier
+	fastTimeout := timeout / 3
+	bottleneckTimeout := timeout * 3
+
 	cases := []struct {
 		description          string
 		runningExecutorCount int
@@ -145,21 +149,21 @@ func TestControllerStop(t *testing.T) {
 		{
 			description:          "no executors",
 			runningExecutorCount: 0,
-			stopTimeout:          200 * time.Millisecond,
+			stopTimeout:          bottleneckTimeout,
 			shouldError:          false,
 		},
 		{
 			description:          "one executor finishes",
 			runningExecutorCount: 1,
-			executorTimeout:      100 * time.Millisecond,
-			stopTimeout:          1 * time.Second,
+			executorTimeout:      fastTimeout,
+			stopTimeout:          bottleneckTimeout,
 			shouldError:          false,
 		},
 		{
 			description:          "one executor exheeds timeout",
 			runningExecutorCount: 1,
-			executorTimeout:      1 * time.Second,
-			stopTimeout:          100 * time.Millisecond,
+			executorTimeout:      bottleneckTimeout,
+			stopTimeout:          fastTimeout,
 			shouldError:          true,
 		},
 	}
@@ -191,7 +195,7 @@ func TestControllerStop(t *testing.T) {
 			}
 
 			go controller.loop()
-			time.Sleep(200 * time.Millisecond * timeMultiplier)
+			time.Sleep(timeout)
 			err := controller.Stop(tc.stopTimeout)
 			if tc.shouldError && err == nil {
 				t.Errorf("executors unexpectedly finished before timeout")

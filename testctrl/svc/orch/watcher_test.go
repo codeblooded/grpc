@@ -66,7 +66,7 @@ func TestWatcherStop(t *testing.T) {
 	select {
 	case <-eventChan:
 		t.Error("received pod event after Stop invoked")
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(100 * time.Millisecond * timeMultiplier):
 		return
 	}
 }
