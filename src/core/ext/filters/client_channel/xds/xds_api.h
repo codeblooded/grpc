@@ -25,6 +25,7 @@
 
 #include <set>
 
+#include "absl/container/inlined_vector.h"
 #include "absl/types/optional.h"
 
 #include <grpc/slice_buffer.h>
@@ -150,7 +151,7 @@ class XdsApi {
     }
 
    private:
-    InlinedVector<LocalityMap, 2> priorities_;
+    absl::InlinedVector<LocalityMap, 2> priorities_;
   };
 
   // There are two phases of accessing this class's content:
@@ -169,7 +170,7 @@ class XdsApi {
       const uint32_t parts_per_million;
     };
 
-    using DropCategoryList = InlinedVector<DropCategory, 2>;
+    using DropCategoryList = absl::InlinedVector<DropCategory, 2>;
 
     void AddCategory(std::string name, uint32_t parts_per_million) {
       drop_category_list_.emplace_back(
@@ -238,17 +239,17 @@ class XdsApi {
 
   // Creates a CDS request querying \a cluster_names.
   // Takes ownership of \a error.
-  grpc_slice CreateCdsRequest(const std::set<StringView>& cluster_names,
+  grpc_slice CreateCdsRequest(const std::set<absl::string_view>& cluster_names,
                               const std::string& version,
                               const std::string& nonce, grpc_error* error,
                               bool populate_node);
 
   // Creates an EDS request querying \a eds_service_names.
   // Takes ownership of \a error.
-  grpc_slice CreateEdsRequest(const std::set<StringView>& eds_service_names,
-                              const std::string& version,
-                              const std::string& nonce, grpc_error* error,
-                              bool populate_node);
+  grpc_slice CreateEdsRequest(
+      const std::set<absl::string_view>& eds_service_names,
+      const std::string& version, const std::string& nonce, grpc_error* error,
+      bool populate_node);
 
   // Parses the ADS response and outputs the validated update for either CDS or
   // EDS. If the response can't be parsed at the top level, \a type_url will
@@ -258,8 +259,8 @@ class XdsApi {
       const std::string& expected_server_name,
       const std::string& expected_route_config_name,
       const bool xds_routing_enabled,
-      const std::set<StringView>& expected_cluster_names,
-      const std::set<StringView>& expected_eds_service_names,
+      const std::set<absl::string_view>& expected_cluster_names,
+      const std::set<absl::string_view>& expected_eds_service_names,
       absl::optional<LdsUpdate>* lds_update,
       absl::optional<RdsUpdate>* rds_update, CdsUpdateMap* cds_update_map,
       EdsUpdateMap* eds_update_map, std::string* version, std::string* nonce,

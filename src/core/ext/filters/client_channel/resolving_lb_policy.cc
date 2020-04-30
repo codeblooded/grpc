@@ -47,7 +47,6 @@
 #include "src/core/lib/channel/connected_channel.h"
 #include "src/core/lib/channel/status_util.h"
 #include "src/core/lib/gpr/string.h"
-#include "src/core/lib/gprpp/inlined_vector.h"
 #include "src/core/lib/gprpp/manual_constructor.h"
 #include "src/core/lib/gprpp/sync.h"
 #include "src/core/lib/iomgr/iomgr.h"
@@ -127,7 +126,8 @@ class ResolvingLoadBalancingPolicy::ResolvingControlHelper
     parent_->resolver_->RequestReresolutionLocked();
   }
 
-  void AddTraceEvent(TraceSeverity severity, StringView message) override {
+  void AddTraceEvent(TraceSeverity severity,
+                     absl::string_view message) override {
     if (parent_->resolver_ == nullptr) return;  // Shutting down.
     parent_->channel_control_helper()->AddTraceEvent(severity, message);
   }
@@ -288,7 +288,7 @@ void ResolvingLoadBalancingPolicy::ConcatenateAndAddChannelTraceLocked(
     size_t len = 0;
     grpc_core::UniquePtr<char> message(gpr_strvec_flatten(&v, &len));
     channel_control_helper()->AddTraceEvent(ChannelControlHelper::TRACE_INFO,
-                                            StringView(message.get()));
+                                            absl::string_view(message.get()));
     gpr_strvec_destroy(&v);
   }
 }

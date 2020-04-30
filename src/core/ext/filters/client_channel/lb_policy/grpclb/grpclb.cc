@@ -64,6 +64,8 @@
 #include <limits.h>
 #include <string.h>
 
+#include "absl/container/inlined_vector.h"
+
 #include <grpc/byte_buffer_reader.h>
 #include <grpc/grpc.h>
 #include <grpc/support/alloc.h>
@@ -295,7 +297,8 @@ class GrpcLb : public LoadBalancingPolicy {
     void UpdateState(grpc_connectivity_state state,
                      std::unique_ptr<SubchannelPicker> picker) override;
     void RequestReresolution() override;
-    void AddTraceEvent(TraceSeverity severity, StringView message) override;
+    void AddTraceEvent(TraceSeverity severity,
+                       absl::string_view message) override;
 
    private:
     RefCountedPtr<GrpcLb> parent_;
@@ -555,7 +558,7 @@ ServerAddressList GrpcLb::Serverlist::GetServerAddressList(
       lb_token[0] = '\0';
     }
     // Add address.
-    InlinedVector<grpc_arg, 2> args_to_add;
+    absl::InlinedVector<grpc_arg, 2> args_to_add;
     args_to_add.emplace_back(grpc_channel_arg_pointer_create(
         const_cast<char*>(GRPC_ARG_GRPCLB_ADDRESS_LB_TOKEN), lb_token,
         &lb_token_arg_vtable));
@@ -626,7 +629,7 @@ GrpcLb::PickResult GrpcLb::Picker::Pick(PickArgs args) {
       // how to interpret it.
       args.initial_metadata->Add(
           kGrpcLbClientStatsMetadataKey,
-          StringView(reinterpret_cast<const char*>(client_stats), 0));
+          absl::string_view(reinterpret_cast<const char*>(client_stats), 0));
       // Update calls-started.
       client_stats->AddCallStarted();
     }
@@ -719,7 +722,8 @@ void GrpcLb::Helper::RequestReresolution() {
   }
 }
 
-void GrpcLb::Helper::AddTraceEvent(TraceSeverity severity, StringView message) {
+void GrpcLb::Helper::AddTraceEvent(TraceSeverity severity,
+                                   absl::string_view message) {
   if (parent_->shutting_down_) return;
   parent_->channel_control_helper()->AddTraceEvent(severity, message);
 }
@@ -1273,7 +1277,7 @@ grpc_channel_args* BuildBalancerChannelArgs(
       GRPC_ARG_CHANNELZ_CHANNEL_NODE,
   };
   // Channel args to add.
-  InlinedVector<grpc_arg, 3> args_to_add;
+  absl::InlinedVector<grpc_arg, 3> args_to_add;
   // The fake resolver response generator, which we use to inject
   // address updates into the LB channel.
   args_to_add.emplace_back(
@@ -1595,7 +1599,7 @@ void GrpcLb::OnFallbackTimerLocked(grpc_error* error) {
 
 grpc_channel_args* GrpcLb::CreateChildPolicyArgsLocked(
     bool is_backend_from_grpclb_load_balancer) {
-  InlinedVector<grpc_arg, 2> args_to_add;
+  absl::InlinedVector<grpc_arg, 2> args_to_add;
   args_to_add.emplace_back(grpc_channel_arg_integer_create(
       const_cast<char*>(GRPC_ARG_ADDRESS_IS_BACKEND_FROM_GRPCLB_LOAD_BALANCER),
       is_backend_from_grpclb_load_balancer));

@@ -20,6 +20,7 @@
 #include <limits.h>
 #include <string.h>
 
+#include "absl/container/inlined_vector.h"
 #include "absl/strings/str_cat.h"
 
 #include <grpc/grpc.h>
@@ -99,9 +100,8 @@ class WeightedTargetLb : public LoadBalancingPolicy {
     // ready state. The first element in the pair represents the end of a
     // range proportional to the child's weight. The start of the range
     // is the previous value in the vector and is 0 for the first element.
-    using PickerList =
-        InlinedVector<std::pair<uint32_t, RefCountedPtr<ChildPickerWrapper>>,
-                      1>;
+    using PickerList = absl::InlinedVector<
+        std::pair<uint32_t, RefCountedPtr<ChildPickerWrapper>>, 1>;
 
     explicit WeightedPicker(PickerList pickers)
         : pickers_(std::move(pickers)) {}
@@ -148,7 +148,8 @@ class WeightedTargetLb : public LoadBalancingPolicy {
       void UpdateState(grpc_connectivity_state state,
                        std::unique_ptr<SubchannelPicker> picker) override;
       void RequestReresolution() override;
-      void AddTraceEvent(TraceSeverity severity, StringView message) override;
+      void AddTraceEvent(TraceSeverity severity,
+                         absl::string_view message) override;
 
      private:
       RefCountedPtr<WeightedChild> weighted_child_;
@@ -277,19 +278,29 @@ void WeightedTargetLb::UpdateLocked(UpdateArgs args) {
       child->DeactivateLocked();
     }
   }
-  // Add or update the targets in the new config.
-  HierarchicalAddressMap address_map =
-      MakeHierarchicalAddressMap(args.addresses);
+  // Create any children that don't already exist.
+  // Note that we add all children before updating any of them, because
+  // an update may trigger a child to immediately update its
+  // connectivity state (e.g., reporting TRANSIENT_FAILURE immediately when
+  // receiving an empty address list), and we don't want to return an
+  // overall state with incomplete data.
   for (const auto& p : config_->target_map()) {
     const std::string& name = p.first;
-    const WeightedTargetLbConfig::ChildConfig& config = p.second;
     auto it = targets_.find(name);
     if (it == targets_.end()) {
       it = targets_.emplace(std::make_pair(name, nullptr)).first;
       it->second = MakeOrphanable<WeightedChild>(
           Ref(DEBUG_LOCATION, "WeightedChild"), it->first);
     }
-    it->second->UpdateLocked(config, std::move(address_map[name]), args.args);
+  }
+  // Update all children.
+  HierarchicalAddressMap address_map =
+      MakeHierarchicalAddressMap(args.addresses);
+  for (const auto& p : config_->target_map()) {
+    const std::string& name = p.first;
+    const WeightedTargetLbConfig::ChildConfig& config = p.second;
+    targets_[name]->UpdateLocked(config, std::move(address_map[name]),
+                                 args.args);
   }
 }
 
@@ -589,7 +600,7 @@ void WeightedTargetLb::WeightedChild::Helper::RequestReresolution() {
 }
 
 void WeightedTargetLb::WeightedChild::Helper::AddTraceEvent(
-    TraceSeverity severity, StringView message) {
+    TraceSeverity severity, absl::string_view message) {
   if (weighted_child_->weighted_target_policy_->shutting_down_) return;
   weighted_child_->weighted_target_policy_->channel_control_helper()
       ->AddTraceEvent(severity, message);
@@ -675,14 +686,15 @@ class WeightedTargetLbFactory : public LoadBalancingPolicyFactory {
       error_list.push_back(GRPC_ERROR_CREATE_FROM_STATIC_STRING(
           "field:weight error:must be of type number"));
     } else {
-      child_config->weight =
-          gpr_parse_nonnegative_int(it->second.string_value().c_str());
-      if (child_config->weight == -1) {
+      int weight = gpr_parse_nonnegative_int(it->second.string_value().c_str());
+      if (weight == -1) {
         error_list.push_back(GRPC_ERROR_CREATE_FROM_STATIC_STRING(
             "field:weight error:unparseable value"));
-      } else if (child_config->weight == 0) {
+      } else if (weight == 0) {
         error_list.push_back(GRPC_ERROR_CREATE_FROM_STATIC_STRING(
             "field:weight error:value must be greater than zero"));
+      } else {
+        child_config->weight = weight;
       }
     }
     // Child policy.
