@@ -103,56 +103,58 @@ func TestReservationManagerReserve(t *testing.T) {
 		},
 	}
 
-	for _, c := range cases {
-		rm := NewReservationManager()
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			rm := NewReservationManager()
 
-		driverPool := Pool{
-			Name:      "DriverPool",
-			Available: 1,
-			Capacity:  1,
-		}
-		rm.AddPool(driverPool)
-
-		workerPool := c.workerPoolBefore
-		workerPool.Name = "WorkerPool"
-		rm.AddPool(workerPool)
-
-		driver := types.NewComponent(testContainerImage, types.DriverComponent)
-		driver.PoolName = driverPool.Name
-
-		var workers []*types.Component
-		for i := 0; i < c.workerCount; i++ {
-			component := types.NewComponent(testContainerImage, types.ClientComponent)
-			component.PoolName = workerPool.Name
-			workers = append(workers, component)
-		}
-
-		session := types.NewSession(driver, workers, nil)
-
-		err := rm.Reserve(session)
-		expectedErrType := reflect.TypeOf(c.err)
-		actualErrType := reflect.TypeOf(err)
-		if c.err != nil {
-			// check for the proper error
-			if expectedErrType != actualErrType {
-				t.Errorf("expected %v error for case %v, but got %v: %v",
-					expectedErrType.Name(), c.description, actualErrType.Name(), err)
+			driverPool := Pool{
+				Name:      "DriverPool",
+				Available: 1,
+				Capacity:  1,
 			}
-		} else {
-			if err != nil {
-				t.Errorf("unexpected error returned: %v", err)
-			}
-		}
+			rm.AddPool(driverPool)
 
-		got := rm.pools[workerPool.Name]
-		if got.Available != c.workerPoolAfter.Available {
-			t.Errorf("expected %v machines remaining after reserve, but got %v",
-				c.workerPoolAfter.Available, got.Available)
-		}
-		if got.Capacity != c.workerPoolAfter.Capacity {
-			t.Errorf("expected %v machine capacity after reserve, but got %v",
-				c.workerPoolAfter.Capacity, got.Capacity)
-		}
+			workerPool := tc.workerPoolBefore
+			workerPool.Name = "WorkerPool"
+			rm.AddPool(workerPool)
+
+			driver := types.NewComponent(testContainerImage, types.DriverComponent)
+			driver.PoolName = driverPool.Name
+
+			var workers []*types.Component
+			for i := 0; i < tc.workerCount; i++ {
+				component := types.NewComponent(testContainerImage, types.ClientComponent)
+				component.PoolName = workerPool.Name
+				workers = append(workers, component)
+			}
+
+			session := types.NewSession(driver, workers, nil)
+
+			err := rm.Reserve(session)
+			expectedErrType := reflect.TypeOf(tc.err)
+			actualErrType := reflect.TypeOf(err)
+			if tc.err != nil {
+				// check for the proper error
+				if expectedErrType != actualErrType {
+					t.Errorf("expected %v error for case %v, but got %v: %v",
+						expectedErrType.Name(), tc.description, actualErrType.Name(), err)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error returned: %v", err)
+				}
+			}
+
+			got := rm.pools[workerPool.Name]
+			if got.Available != tc.workerPoolAfter.Available {
+				t.Errorf("expected %v machines remaining after reserve, but got %v",
+					tc.workerPoolAfter.Available, got.Available)
+			}
+			if got.Capacity != tc.workerPoolAfter.Capacity {
+				t.Errorf("expected %v machine capacity after reserve, but got %v",
+					tc.workerPoolAfter.Capacity, got.Capacity)
+			}
+		})
 	}
 
 	// check error returned for unknown pool
@@ -186,7 +188,7 @@ func TestReservationManagerUnreserve(t *testing.T) {
 		},
 	}
 
-	for _, c := range cases {
+	for _, tc := range cases {
 		rm := NewReservationManager()
 
 		driverPool := Pool{
@@ -196,7 +198,7 @@ func TestReservationManagerUnreserve(t *testing.T) {
 		}
 		rm.AddPool(driverPool)
 
-		workerPool := c.workerPoolBefore
+		workerPool := tc.workerPoolBefore
 		workerPool.Name = "WorkerPool"
 		rm.AddPool(workerPool)
 
@@ -204,7 +206,7 @@ func TestReservationManagerUnreserve(t *testing.T) {
 		driver.PoolName = driverPool.Name
 
 		var workers []*types.Component
-		for i := 0; i < c.workerCount; i++ {
+		for i := 0; i < tc.workerCount; i++ {
 			component := types.NewComponent(testContainerImage, types.ClientComponent)
 			component.PoolName = workerPool.Name
 			workers = append(workers, component)
@@ -218,13 +220,13 @@ func TestReservationManagerUnreserve(t *testing.T) {
 		}
 
 		got := rm.pools[workerPool.Name]
-		if got.Available != c.workerPoolAfter.Available {
+		if got.Available != tc.workerPoolAfter.Available {
 			t.Errorf("expected %v machines remaining after return, but got %v",
-				c.workerPoolAfter.Available, got.Available)
+				tc.workerPoolAfter.Available, got.Available)
 		}
-		if got.Capacity != c.workerPoolAfter.Capacity {
+		if got.Capacity != tc.workerPoolAfter.Capacity {
 			t.Errorf("expected %v machine capacity after return, but got %v",
-				c.workerPoolAfter.Capacity, got.Capacity)
+				tc.workerPoolAfter.Capacity, got.Capacity)
 		}
 	}
 

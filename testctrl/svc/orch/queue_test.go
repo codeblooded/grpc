@@ -23,30 +23,30 @@ import (
 
 func TestQueueCount(t *testing.T) {
 	n := 3 // number of sessions
-	queue := NewQueue(limitlessTracker{})
+	q := newQueue(limitlessTracker{})
 	sessions := makeSessions(t, n)
 	for _, session := range sessions {
-		queue.Enqueue(session)
+		q.Enqueue(session)
 	}
 
-	if count := queue.Count(); count != n {
+	if count := q.Count(); count != n {
 		t.Errorf("count did not return accurate number of items, expected %v but got %v", n, count)
 	}
 }
 
 func TestQueueEnqueue(t *testing.T) {
 	n := 3 // number of sessions
-	queue := NewQueue(limitlessTracker{})
+	q := newQueue(limitlessTracker{})
 
 	expectedSessions := makeSessions(t, n)
 	for _, session := range expectedSessions {
-		if err := queue.Enqueue(session); err != nil {
+		if err := q.Enqueue(session); err != nil {
 			t.Fatalf("encountered unexpected error during session creation: %v", err)
 		}
 	}
 
 	for i, expected := range expectedSessions {
-		actual := queue.items[i].session
+		actual := q.items[i].session
 
 		if !reflect.DeepEqual(actual, expected) {
 			t.Fatalf("items were missed or added in an incorrect order: %v != %v", actual, expected)
@@ -56,19 +56,19 @@ func TestQueueEnqueue(t *testing.T) {
 
 func TestQueueDequeue(t *testing.T) {
 	n := 3 // number of sessions
-	var queue *Queue
+	var q *queue
 	var sessions []*types.Session
 
 	// test FIFO-order preserved when it can accomodate all sessions
-	queue = NewQueue(limitlessTracker{})
+	q = newQueue(limitlessTracker{})
 
 	sessions = makeSessions(t, n)
 	for _, session := range sessions {
-		queue.items = append(queue.items, &queueItem{session})
+		q.items = append(q.items, &queueItem{session})
 	}
 
 	for i, expected := range sessions {
-		got := queue.Dequeue()
+		got := q.Dequeue()
 		if !reflect.DeepEqual(got, expected) {
 			t.Errorf("dequeue (iteration %v of %v) was out of order, got %v but expected %v", i+1, n, got, expected)
 		}
@@ -83,27 +83,27 @@ func TestQueueDequeue(t *testing.T) {
 		Capacity:  5,
 	})
 
-	queue = NewQueue(rm)
+	q = newQueue(rm)
 
 	sessions = makeSessions(t, 3)
 
 	sessions[0].Workers = makeWorkers(t, 5, &poolName)
-	queue.Enqueue(sessions[0])
+	q.Enqueue(sessions[0])
 
 	sessions[1].Workers = makeWorkers(t, 3, &poolName)
-	queue.Enqueue(sessions[1])
+	q.Enqueue(sessions[1])
 
 	sessions[2].Workers = makeWorkers(t, 1, &poolName)
-	queue.Enqueue(sessions[2])
+	q.Enqueue(sessions[2])
 
-	got := queue.Dequeue()
+	got := q.Dequeue()
 	if !reflect.DeepEqual(got, sessions[1]) {
 		t.Errorf("dequeue out of order (FIFO then availability), expected %v but got %v", sessions[1], got)
 	}
 
 	// test returns nil if queue is empty
-	queue = NewQueue(limitlessTracker{})
-	if queue.Dequeue() != nil {
+	q = newQueue(limitlessTracker{})
+	if q.Dequeue() != nil {
 		t.Errorf("dequeue returned an object other than <nil> with nothing enqueued")
 	}
 }
@@ -118,72 +118,40 @@ func TestQueueDone(t *testing.T) {
 	}
 	rm.AddPool(pool)
 
-	queue := NewQueue(rm)
+	q := newQueue(rm)
 
 	fiveWorkers := makeWorkers(t, 5, &pool.Name)
 	session1 := types.NewSession(nil, fiveWorkers, nil)
-	if err := queue.Enqueue(session1); err != nil {
+	if err := q.Enqueue(session1); err != nil {
 		t.Fatalf("could not enqueue session1 as part of test setup")
 	}
 
 	fourWorkers := makeWorkers(t, 4, &pool.Name)
 	session2 := types.NewSession(nil, fourWorkers, nil)
-	if err := queue.Enqueue(session2); err != nil {
+	if err := q.Enqueue(session2); err != nil {
 		t.Fatalf("could not enqueue session2 as part of test setup")
 	}
 
 	twoWorkers := makeWorkers(t, 2, &pool.Name)
 	session3 := types.NewSession(nil, twoWorkers, nil)
-	if err := queue.Enqueue(session3); err != nil {
+	if err := q.Enqueue(session3); err != nil {
 		t.Fatalf("could not enqueue session3 as part of test setup")
 	}
 
-	session := queue.Dequeue()
+	session := q.Dequeue()
 	if session != session1 {
 		t.Fatalf("session1 was not dequeued first, test setup failed: %v != %v", session, session1)
 	}
 
-	session = queue.Dequeue()
+	session = q.Dequeue()
 	if session != session3 {
 		t.Fatalf("session3 was not dequeued second, test setup failed: %v != %v", session, session3)
 	}
 
-	queue.Done(session1)
-	queue.Done(session3)
+	q.Done(session1)
+	q.Done(session3)
 
-	if session := queue.Dequeue(); session != session2 {
+	if session := q.Dequeue(); session != session2 {
 		t.Fatalf("session2 not dequeued, indicating Done is likely not increasing available machines")
 	}
-}
-
-func makeSessions(t *testing.T, n int) []*types.Session {
-	t.Helper()
-	var sessions []*types.Session
-	for i := 0; i < n; i++ {
-		sessions = append(sessions, types.NewSession(nil, nil, nil))
-	}
-	return sessions
-}
-
-func makeWorkers(t *testing.T, n int, pool *string) []*types.Component {
-	t.Helper()
-	var components []*types.Component
-
-	if n < 1 {
-		return components
-	}
-
-	components = append(components, types.NewComponent(testContainerImage, types.ServerComponent))
-
-	for i := n - 1; i > 0; i-- {
-		components = append(components, types.NewComponent(testContainerImage, types.ClientComponent))
-	}
-
-	if pool != nil {
-		for _, c := range components {
-			c.PoolName = *pool
-		}
-	}
-
-	return components
 }

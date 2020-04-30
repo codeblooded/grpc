@@ -20,23 +20,23 @@ import (
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
 
-// Queue provides a thread-safe FIFO structure that uses a ReservationTracker to only dequeue
+// queue provides a thread-safe FIFO structure that uses a ReservationTracker to only dequeue
 // sessions when there are enough available machines.
-type Queue struct {
+type queue struct {
 	items   []*queueItem
 	tracker ReservationTracker
 	mux     sync.Mutex
 }
 
-// NewQueue constructs a queue, given a ReservationTracker.
-func NewQueue(tracker ReservationTracker) *Queue {
-	return &Queue{
+// newQueue constructs a queue, given a ReservationTracker.
+func newQueue(tracker ReservationTracker) *queue {
+	return &queue{
 		tracker: tracker,
 	}
 }
 
 // Enqueue adds a session to the queue.
-func (q *Queue) Enqueue(session *types.Session) error {
+func (q *queue) Enqueue(session *types.Session) error {
 	q.mux.Lock()
 	defer q.mux.Unlock()
 	q.items = append(q.items, &queueItem{session})
@@ -48,7 +48,7 @@ func (q *Queue) Enqueue(session *types.Session) error {
 //
 // If a session is returned, it is the responsibility of the caller to invoke the Done method when
 // the session no longer requires its machines.
-func (q *Queue) Dequeue() *types.Session {
+func (q *queue) Dequeue() *types.Session {
 	q.mux.Lock()
 	defer q.mux.Unlock()
 
@@ -65,14 +65,14 @@ func (q *Queue) Dequeue() *types.Session {
 }
 
 // Done marks the termination of a session, allowing the machines to be used by another session.
-func (q *Queue) Done(session *types.Session) {
+func (q *queue) Done(session *types.Session) {
 	q.mux.Lock()
 	defer q.mux.Unlock()
 	q.tracker.Unreserve(session)
 }
 
 // Count returns the number of sessions in the queue.
-func (q *Queue) Count() int {
+func (q *queue) Count() int {
 	q.mux.Lock()
 	defer q.mux.Unlock()
 	return len(q.items)
