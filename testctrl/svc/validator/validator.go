@@ -40,14 +40,14 @@ func (v *Validator) validateImages(session *types.Session) error {
 
 	driverImage := driver.ContainerImage
 	if !v.validImageName(driverImage) {
-		return fmt.Errorf("driver container image %q does not have required prefix %q",
+		return fmt.Errorf("driver container image %q missing required prefix %q",
 			driverImage, v.ImageNamePrefix)
 	}
 
 	for _, worker := range session.Workers {
 		workerImage := worker.ContainerImage
 		if !v.validImageName(workerImage) {
-			return fmt.Errorf("%v container image %q does not have required prefix %q",
+			return fmt.Errorf("%v container image %q missing required prefix %q",
 				strings.ToLower(worker.Kind.String()), workerImage, v.ImageNamePrefix)
 		}
 	}
