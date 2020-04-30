@@ -18,6 +18,11 @@ type Validator struct {
 	// images by Google Cloud Project. It assigns all images a name like
 	// `gcr.io/<project>/<image>`. To enforce that all images came from a
 	// specific GCR project, we can set this value to `gcr.io/<project>/`.
+	//
+	// BE SURE TO INCLUDE THE FINAL SLASH, OTHERWISE THE PREFIX DOES NOT
+	// ENFORCE IT CAME FROM A SPECIFIC GCP PROJECT. For example, specifying
+	// `gcr.io/fake-project` as the prefix will allow an image named
+	// `gcr.io/fake-project-different-owner/malware`.
 	ImageNamePrefix string
 }
 
