@@ -31,7 +31,7 @@ import (
 	statuspb "google.golang.org/genproto/googleapis/rpc/status"
 )
 
-// operationNamePrefix is the prefix present in all operation anmes.
+// operationNamePrefix is the prefix present in all operation names.
 const operationNamePrefix = "operations/"
 
 // OperationsServer implements the google.longrunning.Operations interface
@@ -62,12 +62,15 @@ func getOperationName(sessionName string) string {
 	return fmt.Sprintf("%s%s", operationNamePrefix, sessionName)
 }
 
-// isOperationDone returns true if the operation is finished, and false
+// isOperationFinished returns true if the operation is finished, and false
 // otherwise, based on the latest event received by the operation's session.
-func isOperationDone(e *types.Event) bool {
+func isOperationFinished(e *types.Event) bool {
+	// The operation is not finished if there is no event.
 	if e == nil {
 		return false
 	}
+	// The operation is finished if the event kind is DoneEvent or an
+	// error, otherwise it is not finished.
 	switch e.Kind {
 	case types.InternalErrorEvent:
 		return true
@@ -84,7 +87,7 @@ func isOperationDone(e *types.Event) bool {
 // successful, and false otherwise, based on the latest event received by
 // the operation's session.
 func isOperationSuccess(e *types.Event) bool {
-	return (isOperationDone(e) && e.Kind == types.DoneEvent)
+	return (isOperationFinished(e) && e.Kind == types.DoneEvent)
 }
 
 // newEventProto constructs an Event proto from an Event object. This
@@ -114,7 +117,7 @@ func newEventProto(e *types.Event) (eventpb *svcpb.Event, err error) {
 // newOperationMetadataProto constructs an operation metadata proto from
 // an Event object. The operation metadata proto is of type TestSessionMetadata,
 // marshalled to Any. This function returns an error if the metadata proto
-// cannot be constructred or cannot be marshalled to Any.
+// cannot be constructed or cannot be marshalled to Any.
 func newOperationMetadataProto(e *types.Event) (metadatapb *anypb.Any, err error) {
 	var eventpb *svcpb.Event
 	eventpb, err = newEventProto(e)
@@ -137,7 +140,7 @@ func newOperationMetadataProto(e *types.Event) (metadatapb *anypb.Any, err error
 // marshalled to Any. This function returns an error if the response proto
 // cannot be constructed or cannot be marshalled to Any.
 func newOperationResponseProto(e *types.Event, s *types.Session) (responsepb *anypb.Any, err error) {
-	if (e == nil) || (!isOperationDone(e)) || (s == nil) {
+	if (e == nil) || (!isOperationFinished(e)) || (s == nil) {
 		err = fmt.Errorf("cannot calculate operation response: failed precondition check")
 		return
 	}
@@ -158,7 +161,7 @@ func newOperationResponseProto(e *types.Event, s *types.Session) (responsepb *an
 // object. The error response proto is of type Status. This function returns
 // an error if the error proto cannot be constructed.
 func newOperationErrorProto(e *types.Event) (status *statuspb.Status, err error) {
-	if (e == nil) || (!isOperationDone(e)) || isOperationSuccess(e) {
+	if (e == nil) || (!isOperationFinished(e)) || isOperationSuccess(e) {
 		err = fmt.Errorf("cannot calculate operation error: failed precondition check")
 		return
 	}
@@ -176,10 +179,10 @@ func newOperationErrorProto(e *types.Event) (status *statuspb.Status, err error)
 	return
 }
 
-// newOperation constructs an operation proto from an Event object and a Session
+// NewOperation constructs an operation proto from an Event object and a Session
 // object. This function returns en error if the operation proto cannot be
 // constructed.
-func newOperation(e *types.Event, s *types.Session) (o *lrpb.Operation, err error) {
+func NewOperation(e *types.Event, s *types.Session) (o *lrpb.Operation, err error) {
 	if s == nil {
 		err = fmt.Errorf("operation must correspond to a session")
 		return
@@ -190,12 +193,12 @@ func newOperation(e *types.Event, s *types.Session) (o *lrpb.Operation, err erro
 	if err != nil {
 		return
 	}
-	done := isOperationDone(e)
+	finished := isOperationFinished(e)
 	success := isOperationSuccess(e)
 	operationpb := &lrpb.Operation{
 		Name:     operationName,
 		Metadata: metadatapb,
-		Done:     done,
+		Done:     finished,
 	}
 	if success {
 		var responsepb *anypb.Any
@@ -207,7 +210,7 @@ func newOperation(e *types.Event, s *types.Session) (o *lrpb.Operation, err erro
 			Response: responsepb,
 		}
 	}
-	if done && !success {
+	if finished && !success {
 		var errorpb *statuspb.Status
 		errorpb, err = newOperationErrorProto(e)
 		if err != nil {
@@ -253,7 +256,7 @@ func (o *OperationsServer) GetOperation(ctx context.Context, req *lrpb.GetOperat
 		err = fmt.Errorf("operation not found: %q", req.Name)
 		return
 	}
-	operation, err = newOperation(latestEvent, session)
+	operation, err = NewOperation(latestEvent, session)
 	return
 }
 

@@ -32,7 +32,7 @@ import (
 	"github.com/grpc/grpc/testctrl/svc/orch"
 	"github.com/grpc/grpc/testctrl/svc/store"
 
-	lrPb "google.golang.org/genproto/googleapis/longrunning"
+	lrpb "google.golang.org/genproto/googleapis/longrunning"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -97,13 +97,12 @@ func main() {
 	}
 
 	storageServer := store.NewStorageServer()
+	operationsServer := svc.NewOperationsServer(storageServer)
 
-	lrPb.RegisterOperationsServer(grpcServer, svc.NewOperationsServer(
-		storageServer,
-	))
+	lrpb.RegisterOperationsServer(grpcServer, operationsServer)
 
 	pb.RegisterSchedulingServiceServer(grpcServer, svc.NewSchedulingServer(
-		controller, storageServer,
+		controller, operationsServer, storageServer,
 	))
 
 	glog.Infof("running gRPC server (insecure) on port %d", *port)

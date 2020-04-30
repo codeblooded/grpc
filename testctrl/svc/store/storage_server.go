@@ -21,8 +21,8 @@ import (
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
 
-// Store is the interface for a data store.
-// The data store stores sessions and associated events.
+// Store is the interface for a data store. The data store stores
+// sessions and associated events.
 type Store interface {
 	// Adds a Session object to the Store.
 	StoreSession(session *types.Session) error
@@ -33,7 +33,8 @@ type Store interface {
 	// Gets the latest event associated to an existing session,
 	// and an error if the session does not exist.
 	GetLatestEvent(sessionName string) (*types.Event, error)
-	// Deletes a Session object and associated events from the Store.
+	// Deletes a Session object and associated events from the
+	// Store.
 	DeleteSession(sessionName string)
 }
 
@@ -59,7 +60,7 @@ func (s *StorageServer) StoreSession(session *types.Session) error {
 	sessionName := session.Name
 	_, sessionExists := s.sessionMap[sessionName]
 	if sessionExists {
-		return fmt.Errorf("Duplicate session name: %s", sessionName)
+		return fmt.Errorf("duplicate session name: %s", sessionName)
 	}
 	s.sessionMap[sessionName] = *session
 	s.eventMap[sessionName] = make([]types.Event, 0)
@@ -86,17 +87,17 @@ func (s *StorageServer) StoreEvent(sessionName string, event *types.Event) error
 		s.eventMap[sessionName] = append(eventStore, *event)
 		return nil
 	}
-	return fmt.Errorf("Unknown session name: %s", sessionName)
+	return fmt.Errorf("unknown session name: %s", sessionName)
 }
 
-// GetLatestEvent returns the latest event associated with an existing session,
-// and an error if the session does not exist.
+// GetLatestEvent returns the latest event associated with an existing
+// session, and an error if the session does not exist.
 func (s *StorageServer) GetLatestEvent(sessionName string) (*types.Event, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	eventStore, sessionExists := s.eventMap[sessionName]
 	if !sessionExists {
-		return nil, fmt.Errorf("Unknown session name: %s", sessionName)
+		return nil, fmt.Errorf("unknown session name: %s", sessionName)
 	}
 	if len(eventStore) == 0 {
 		return nil, nil
