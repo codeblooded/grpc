@@ -196,7 +196,7 @@ func TestControllerStop(t *testing.T) {
 			if tc.shouldError && err == nil {
 				t.Errorf("executors unexpectedly finished before timeout")
 			} else if !tc.shouldError && err != nil {
-				t.Errorf("timeout unexpectedly reachedbefore executors done signal")
+				t.Errorf("timeout unexpectedly reached before executors done signal")
 			}
 
 			// try to schedule session after stopping

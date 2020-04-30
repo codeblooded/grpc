@@ -76,7 +76,7 @@ func (w *Watcher) Subscribe(sessionName string) (<-chan *PodWatchEvent, error) {
 	return eventChan, nil
 }
 
-// Unsubscribe accepts the name of a session and prevents any subscriber channel from receiving events
+// Unsubscribe accepts the name of a session and prevents the subscriber channel from receiving events
 // additional events. If the session has no subscribers, it returns an error.
 func (w *Watcher) Unsubscribe(sessionName string) error {
 	w.mux.Lock()
@@ -180,7 +180,7 @@ type PodWatchEvent struct {
 	// ComponentName is the name of the component this pod represents.
 	ComponentName string
 
-	// Pod is the kubernetes objet itself.
+	// Pod is the kubernetes object itself.
 	Pod *corev1.Pod
 
 	// PodIP is the pod's IP if available. Otherwise, it is an empty string.
