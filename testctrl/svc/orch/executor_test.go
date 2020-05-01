@@ -23,7 +23,7 @@ func TestKubeExecutorProvision(t *testing.T) {
 	components := []*types.Component{server, client, driver}
 	session := types.NewSession(driver, components[:2], nil)
 
-	e := newKubeExecutor(0, fakePodInf, nil)
+	e := newKubeExecutor(0, fakePodInf, nil, nil)
 	eventChan := make(chan *PodWatchEvent)
 	e.eventChan = eventChan
 	e.session = session
@@ -75,7 +75,7 @@ func TestKubeExecutorProvision(t *testing.T) {
 	components = []*types.Component{server, client, driver}
 	session = types.NewSession(driver, components[:2], nil)
 
-	e = newKubeExecutor(0, fakePodInf, nil)
+	e = newKubeExecutor(0, fakePodInf, nil, nil)
 	eventChan = make(chan *PodWatchEvent)
 	e.eventChan = eventChan
 	e.session = session
@@ -136,7 +136,7 @@ func TestKubeExecutorMonitor(t *testing.T) {
 			components := []*types.Component{server, client, driver}
 			session := types.NewSession(driver, components[:2], nil)
 
-			e := newKubeExecutor(0, fakePodInf, nil)
+			e := newKubeExecutor(0, fakePodInf, nil, nil)
 			eventChan := make(chan *PodWatchEvent)
 			e.eventChan = eventChan
 			e.session = session
@@ -185,7 +185,7 @@ func TestKubeExecutorMonitor(t *testing.T) {
 //	}
 //	podCountBefore := len(pods)
 //
-//	e := newKubeExecutor(0, fakePodInf, nil)
+//	e := newKubeExecutor(0, fakePodInf, nil, nil)
 //	e.session = session
 //	if err = e.clean(fakePodInf); err != nil {
 //		t.Fatalf("returned an error unexpectedly: %v", err)

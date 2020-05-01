@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/grpc/grpc/testctrl/svc/store"
 	"github.com/grpc/grpc/testctrl/svc/types"
 
 	corev1 "k8s.io/api/core/v1"
@@ -26,43 +27,61 @@ type kubeExecutor struct {
 	eventChan <-chan *PodWatchEvent
 	session   *types.Session
 	pcd       podCreateDeleter
+	store     store.Store
 }
 
-func newKubeExecutor(index int, pcd podCreateDeleter, watcher *Watcher) *kubeExecutor {
+func newKubeExecutor(index int, pcd podCreateDeleter, watcher *Watcher, store store.Store) *kubeExecutor {
 	return &kubeExecutor{
 		name:    fmt.Sprintf("%d", index),
 		watcher: watcher,
 		pcd:     pcd,
+		store:   store,
 	}
 }
 
 func (k *kubeExecutor) Execute(session *types.Session) error {
-	var err error
-
 	k.setSession(session)
+	k.writeEvent(types.AcceptEvent, nil, "kubernetes executor %v assigned session %v", k.name, session.Name)
 
-	if err = k.provision(); err != nil {
+	k.writeEvent(types.ProvisionEvent, nil, "started provisioning components for session")
+	err := k.provision()
+	if err != nil {
 		err = fmt.Errorf("failed to provision: %v", err)
 		goto endSession
 	}
 
-	if err = k.monitor(); err != nil {
+	k.writeEvent(types.RunEvent, nil, "all containers appear healthy, monitoring during tests")
+	err = k.monitor()
+	if err != nil {
 		err = fmt.Errorf("failed during test: %v", err)
-		goto endSession
 	}
 
 endSession:
-	if logs, err := k.getDriverLogs(); err == nil {
-		glog.Infof("kubeExecutor[%v]: found logs for component (driver) %v: %s",
-			k.name, k.session.Driver.Name, logs)
+	logs, logErr := k.getDriverLogs()
+	if logErr != nil {
+		logErr = fmt.Errorf("failed to fetch logs from driver: %v", logErr)
 	}
 
-	if err = k.clean(); err != nil {
-		glog.Errorf("kubeExecutor[%v]: failed to teardown resources for session %v: %v",
-			k.name, session.Name, err)
+	cleanErr := k.clean()
+	if cleanErr != nil {
+		cleanErr = fmt.Errorf("failed to tear-down resources: %v", cleanErr)
 	}
 
-	return err
+	if logErr != nil {
+		k.writeEvent(types.InternalErrorEvent, nil, logErr.Error())
+	}
+
+	if cleanErr != nil {
+		k.writeEvent(types.InternalErrorEvent, logs, cleanErr.Error())
+	}
+
+	if err != nil {
+		k.writeEvent(types.ErrorEvent, logs, err.Error())
+		return err
+	}
+
+	k.writeEvent(types.DoneEvent, logs, "session completed, driver container had exit status of 0")
+	return nil
 }
 
 func (k *kubeExecutor) provision() error {
@@ -165,4 +184,24 @@ func (k *kubeExecutor) setSession(session *types.Session) {
 	eventChan, _ := k.watcher.Subscribe(session.Name)
 	k.eventChan = eventChan
 	k.session = session
+}
+
+func (k *kubeExecutor) writeEvent(kind types.EventKind, driverLogs []byte, descriptionFmt string, args ...interface{}) {
+	description := fmt.Sprintf(descriptionFmt, args...)
+
+	if k.store != nil {
+		k.store.StoreEvent(k.session.Name, &types.Event{
+			SubjectName: k.session.Name,
+			Kind:        kind,
+			Time:        time.Now(),
+			Description: description,
+			DriverLogs:  driverLogs,
+		})
+	}
+
+	if kind == types.InternalErrorEvent || kind == types.ErrorEvent {
+		glog.Errorf("kubeExecutor[%v]: [%v]: %v", k.name, kind, description)
+	} else {
+		glog.Infof("kubeExecutor[%v]: [%v]: %v", k.name, kind, description)
+	}
 }
