@@ -20,10 +20,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/golang/glog"
+	"github.com/grpc/grpc/testctrl/svc/store"
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
 
@@ -33,6 +34,7 @@ const executorCount = 1
 // Controller serves as the coordinator for orchestrating sessions. It manages active and idle
 // sessions, as well as, interactions with Kubernetes through a set of a internal types.
 type Controller struct {
+	store           store.Store
 	pcd             podCreateDeleter
 	pw              podWatcher
 	nl              NodeLister
@@ -45,10 +47,10 @@ type Controller struct {
 	newExecutorFunc func() Executor
 }
 
-// NewController creates a controller using a Kubernetes clientset. This clientset allows the
-// controller to interact with Kubernetes, so it cannot be nil. If it is nil, an error will be
-// returned instead of a controller instance.
-func NewController(clientset kubernetes.Interface) (*Controller, error) {
+// NewController creates a controller using a Kubernetes clientset and a store. The clientset allows
+// the controller to interact with Kubernetes. The store is used to report significant orchestration
+// events, so progress can be reported. A nil clientset will result in an error.
+func NewController(clientset kubernetes.Interface, store store.Store) (*Controller, error) {
 	if clientset == nil {
 		return nil, errors.New("cannot create controller from nil kubernetes clientset")
 	}
@@ -61,10 +63,11 @@ func NewController(clientset kubernetes.Interface) (*Controller, error) {
 		pw:      podInterface,
 		nl:      coreV1Interface.Nodes(),
 		watcher: NewWatcher(podInterface),
+		store:   store,
 	}
 
 	c.newExecutorFunc = func() Executor {
-		return newKubeExecutor(0, c.pcd, c.watcher)
+		return newKubeExecutor(0, c.pcd, c.watcher, c.store)
 	}
 
 	return c, nil
@@ -82,6 +85,13 @@ func (c *Controller) Schedule(s *types.Session) error {
 	}
 
 	c.waitQueue.Enqueue(s)
+	if c.store != nil {
+		c.store.StoreEvent(s.Name, &types.Event{
+			SubjectName: s.Name,
+			Kind:        types.QueueEvent,
+			Time:        time.Now(),
+		})
+	}
 	return nil
 }
 
