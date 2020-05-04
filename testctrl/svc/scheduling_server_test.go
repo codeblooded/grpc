@@ -52,7 +52,7 @@ func (f *FakeScheduler) Schedule(s *types.Session) error {
 	return f.Err
 }
 
-func fakeNewSession(sessionName string) newSessionType {
+func newFakeNewSessionFunc(sessionName string) newSessionFunc {
 	f := func(c *types.Component, w []*types.Component, s *pb.Scenario) *types.Session {
 		session := types.NewSession(c, w, s)
 		session.Name = sessionName
@@ -89,6 +89,7 @@ func TestSchedulingServer(t *testing.T) {
 	for _, v := range tis {
 		ti := v
 		t.Run(ti.TestName, func(t *testing.T) {
+			t.Parallel()
 			storageServer := store.NewStorageServer()
 			if ti.SessionExists {
 				dup := newTestSession(1)
@@ -104,7 +105,7 @@ func TestSchedulingServer(t *testing.T) {
 				scheduler:  fakeScheduler,
 				operations: operationsServer,
 				store:      storageServer,
-				newSession: fakeNewSession("session-0"),
+				newSession: newFakeNewSessionFunc("session-0"),
 			}
 			ctx := context.TODO()
 			session := newTestSession(0)

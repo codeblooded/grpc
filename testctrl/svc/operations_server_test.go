@@ -232,7 +232,7 @@ func TestOperationsServer(t *testing.T) {
 				t.Fatalf("expected an operation, received nil")
 			}
 			if op.Done && !ti.Expected.Done {
-				t.Fatalf("expected operationn done, received not done")
+				t.Fatalf("expected operation done, received not done")
 			}
 			if !op.Done && ti.Expected.Done {
 				t.Fatalf("expected operation not done, received done")

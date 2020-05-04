@@ -34,15 +34,15 @@ type Scheduler interface {
 	Schedule(s *types.Session) error
 }
 
-// newSessionType is the type of the new session constructor.
-type newSessionType func(c *types.Component, w []*types.Component, s *pb.Scenario) *types.Session
+// newSessionFunc is the type of the new session constructor.
+type newSessionFunc func(c *types.Component, w []*types.Component, s *pb.Scenario) *types.Session
 
 // SchedulingServer implements the scheduling service.
 type SchedulingServer struct {
 	scheduler  Scheduler
 	operations lrpb.OperationsServer
 	store      store.Store
-	newSession newSessionType
+	newSession newSessionFunc
 }
 
 // NewSchedulingServer constructs a scheduling server from a scheduler,
@@ -76,16 +76,8 @@ func (s *SchedulingServer) StartTestSession(ctx context.Context, req *svcpb.Star
 		err = fmt.Errorf("error storing new test session: %v", err)
 		return
 	}
-	var event *types.Event
-	event, err = s.store.GetLatestEvent(session.Name)
-	if err != nil {
-		err = fmt.Errorf(
-			"error retrieving event for new test session: %v",
-			err,
-		)
-		return
-	}
-	operation, err = newOperation(event, session)
+	// Latest event at session creation is nil.
+	operation, err = newOperation(nil, session)
 	if err != nil {
 		err = fmt.Errorf(
 			"Error creating operation for new test session: %v",
