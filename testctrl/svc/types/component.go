@@ -21,31 +21,38 @@ import (
 	pb "github.com/grpc/grpc/testctrl/proto/scheduling/v1"
 )
 
-// Component represents a dependency that must be provisioned and managed during a session. For
-// example, benchmarks tend to have a driver, server and a set of client components. Prefer creating
-// components with the NewComponent constructor, because it assigns a unique name.
+// Component represents a dependency that must be provisioned and
+// managed during a session. For example, benchmarks tend to have a
+// driver, server and a set of client components. Prefer creating
+// components with the NewComponent constructor, because it assigns a
+// unique name.
 type Component struct {
 	// Name uniquely identifies a component.
 	Name string
 
-	// ContainerImage is the docker image name and tag of the component.
+	// ContainerImage is the docker image name and tag of the
+	// component.
 	ContainerImage string
 
 	// Kind is the type of component.
 	Kind ComponentKind
 
-	// PoolName is the optional name of a node pool where the component should be scheduled. If
-	// no name is provided, the system will choose a pool.
+	// PoolName is the optional name of a node pool where the
+	// component should be scheduled. If no name is provided, the
+	// system will choose a pool.
 	PoolName string
 
-	// Env is the map of environment variables that should be set when the component is started.
+	// Env is the map of environment variables that should be set
+	// when the component is started.
 	Env map[string]string
 }
 
-// NewComponent creates a Component instance, given a container image and kind.
+// NewComponent creates a Component instance, given a container image
+// and kind.
 //
-// The container image string should contain the path to a docker image in a registry, versioned by
-// an explicit tag or hash.
+
+// The container image string should contain the path to a docker
+// image in a registry, versioned by an explicit tag or hash.
 //
 // For example:
 //
@@ -66,8 +73,9 @@ func NewComponent(containerImage string, kind ComponentKind) *Component {
 	}
 }
 
-// ResourceName returns the name the component prefixed with `components/`. This value should be
-// displayed to a consumer of the API.
+// ResourceName returns the name the component prefixed with
+// `components/`. This value should be displayed to a consumer of the
+// API.
 func (c *Component) ResourceName() string {
 	return fmt.Sprintf("components/%s", c.Name)
 }
@@ -78,7 +86,8 @@ type ComponentKind int32
 const (
 	_ ComponentKind = iota
 
-	// DriverComponent is a test component that orchestrates workers, such as clients and servers.
+	// DriverComponent is a test component that orchestrates
+	// workers, such as clients and servers.
 	DriverComponent
 
 	// ClientComponent feeds traffic to a server component.
@@ -88,8 +97,9 @@ const (
 	ServerComponent
 )
 
-// ComponentKindFromProto takes the generated protobuf enum type and safely converts it into a
-// ComponentKind. It ensures the string representations are equivalent, even if values change.
+// ComponentKindFromProto takes the generated protobuf enum type and
+// safely converts it into a ComponentKind. It ensures the string
+// representations are equivalent, even if values change.
 func ComponentKindFromProto(p pb.Component_Kind) ComponentKind {
 	return componentKindStringToConstMap[p.String()]
 }
@@ -99,8 +109,9 @@ func (k ComponentKind) String() string {
 	return componentKindConstToStringMap[k]
 }
 
-// Proto converts the ComponentKind enum into the generated protobuf enum. It ensures the string
-// representations are equivalent, even if values change.
+// Proto converts the ComponentKind enum into the generated protobuf
+// enum. It ensures the string representations are equivalent, even if
+// values change.
 func (k ComponentKind) Proto() pb.Component_Kind {
 	return pb.Component_Kind(pb.Component_Kind_value[k.String()])
 }

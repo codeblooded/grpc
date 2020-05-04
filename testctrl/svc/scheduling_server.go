@@ -16,26 +16,84 @@ package svc
 
 import (
 	"context"
+	"fmt"
 
-	svcPb "github.com/grpc/grpc/testctrl/proto/scheduling/v1"
+	pb "github.com/codeblooded/grpc-proto/genproto/grpc/testing"
+	svcpb "github.com/grpc/grpc/testctrl/proto/scheduling/v1"
+	"github.com/grpc/grpc/testctrl/svc/store"
 	"github.com/grpc/grpc/testctrl/svc/types"
 
-	lrPb "google.golang.org/genproto/googleapis/longrunning"
+	lrpb "google.golang.org/genproto/googleapis/longrunning"
 )
 
 // Scheduler is a single method interface for queueing sessions.
 type Scheduler interface {
-	// Schedule enqueues a session, returning any immediate error. Infrastructure and
-	// test runtime errors will not be returned.
+	// Schedule enqueues a session, returning any immediate error.
+	// Infrastructure and test runtime errors will not be
+	// returned.
 	Schedule(s *types.Session) error
 }
 
+// newSessionFunc is the type of the new session constructor.
+type newSessionFunc func(c *types.Component, w []*types.Component, s *pb.Scenario) *types.Session
+
+// SchedulingServer implements the scheduling service.
 type SchedulingServer struct {
-	Scheduler Scheduler
+	scheduler  Scheduler
+	operations lrpb.OperationsServer
+	store      store.Store
+	newSession newSessionFunc
 }
 
-func (s *SchedulingServer) StartTestSession(ctx context.Context, req *svcPb.StartTestSessionRequest) (*lrPb.Operation, error) {
-	operation := new(lrPb.Operation)
-	operation.Done = false
-	return operation, nil
+// NewSchedulingServer constructs a scheduling server from a scheduler,
+// an operations server, and a store.
+func NewSchedulingServer(scheduler Scheduler, operations lrpb.OperationsServer, store store.Store) *SchedulingServer {
+	return &SchedulingServer{
+		scheduler:  scheduler,
+		operations: operations,
+		store:      store,
+		newSession: types.NewSession,
+	}
+}
+
+// StartTestSession implements the scheduling service interface for
+// starting a test session.
+func (s *SchedulingServer) StartTestSession(ctx context.Context, req *svcpb.StartTestSessionRequest) (operation *lrpb.Operation, err error) {
+	driver := types.NewComponent(
+		req.Driver.ContainerImage,
+		types.DriverComponent,
+	)
+	workers := make([]*types.Component, len(req.Workers))
+	for i, v := range req.Workers {
+		workers[i] = types.NewComponent(
+			v.ContainerImage,
+			types.ComponentKindFromProto(v.Kind),
+		)
+	}
+	session := s.newSession(driver, workers, req.Scenario)
+	err = s.store.StoreSession(session)
+	if err != nil {
+		err = fmt.Errorf("error storing new test session: %v", err)
+		return
+	}
+	// Latest event at session creation is nil.
+	operation, err = newOperation(nil, session)
+	if err != nil {
+		err = fmt.Errorf(
+			"Error creating operation for new test session: %v",
+			err,
+		)
+		return
+	}
+	err = s.scheduler.Schedule(session)
+	if err != nil {
+		operation = nil
+		s.store.DeleteSession(session.Name)
+		err = fmt.Errorf(
+			"error scheduling new test session: %v",
+			err,
+		)
+		return
+	}
+	return
 }

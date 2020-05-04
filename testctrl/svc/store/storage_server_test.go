@@ -15,8 +15,8 @@
 package store
 
 import (
-	"testing"
 	"reflect"
+	"testing"
 
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
@@ -80,10 +80,26 @@ func TestStorageServer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error storing a second event for session: %v", err)
 	}
+	// Retrieving an existing session succeeds.
+	session := s.GetSession(sessions[1].Name)
+	if !reflect.DeepEqual(sessions[1], session) {
+		t.Fatalf("Error retrieving session: %q", sessions[1].Name)
+	}
+	// Retrieving a non-existing session returns nil.
+	session = s.GetSession(sessions[2].Name)
+	if session != nil {
+		t.Fatalf(
+			"Error retrieving session. Expected nil, got %q",
+			session.Name,
+		)
+	}
 	var event *types.Event
 	// Getting the latest event from a session that has an event
 	// returns an event, and it is the latest.
-	event = s.GetLatestEvent(sessions[0].Name)
+	event, err = s.GetLatestEvent(sessions[0].Name)
+	if err != nil {
+		t.Fatalf("Error reading latest event: %v", err)
+	}
 	if event == nil {
 		t.Fatalf("Error reading latest event: event is nil.")
 	}
@@ -93,21 +109,31 @@ func TestStorageServer(t *testing.T) {
 	}
 	// Getting the latest event from a session that has no events
 	// returns nil.
-	event = s.GetLatestEvent(sessions[1].Name)
+	event, err = s.GetLatestEvent(sessions[1].Name)
+	if err != nil {
+		t.Fatalf("Error reading latest event: %v", err)
+	}
 	if event != nil {
 		t.Fatalf("Error reading latest event: expected nil, got %q",
 			event.SubjectName)
 	}
 	// Getting the latest event from a session that does not exist
-	// returns nil.
-	event = s.GetLatestEvent(sessions[2].Name)
+	// returns nil and an error.
+	event, err = s.GetLatestEvent(sessions[2].Name)
+	if err == nil {
+		t.Fatalf("Error reading latest event: expected error, got nil.")
+	}
 	if event != nil {
 		t.Fatalf("Error reading latest event: expected nil, got %q",
 			event.SubjectName)
 	}
 	s.DeleteSession(sessions[0].Name)
-	// Getting the latest event from a deleted session returns nil.
-	event = s.GetLatestEvent(sessions[0].Name)
+	// Getting the latest event from a deleted session returns nil
+	// and an error.
+	event, err = s.GetLatestEvent(sessions[0].Name)
+	if err == nil {
+		t.Fatalf("Error reading latest event: expected error, got nil.")
+	}
 	if event != nil {
 		t.Fatalf("Error reading latest event: expected nil, got %q",
 			event.SubjectName)

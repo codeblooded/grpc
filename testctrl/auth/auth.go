@@ -21,8 +21,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// ConnectWithinCluster uses Kubernetes utility functions to locate the credentials within the
-// cluster and connect to the API.
+// ConnectWithinCluster uses Kubernetes utility functions to locate
+// the credentials within the cluster and connect to the API.
 func ConnectWithinCluster() (*kubernetes.Clientset, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -37,8 +37,8 @@ func ConnectWithinCluster() (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
-// Connect takes an absolute path to a kube config file which is used to connect to the
-// Kubernetes API.
+// ConnectWithConfig takes an absolute path to a kube config file
+// which is used to connect to the Kubernetes API.
 func ConnectWithConfig(abspath string) (*kubernetes.Clientset, error) {
 	config, err := clientcmd.BuildConfigFromFlags("", abspath)
 	if err != nil {

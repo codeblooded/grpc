@@ -25,7 +25,7 @@ func TestSessionFilterWorkers(t *testing.T) {
 	server := &Component{Kind: ServerComponent}
 
 	session := &Session{
-		Driver: driver,
+		Driver:  driver,
 		Workers: []*Component{server, client},
 	}
 
