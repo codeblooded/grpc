@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	pb "github.com/codeblooded/grpc-proto/genproto/grpc/testing"
 	svcpb "github.com/grpc/grpc/testctrl/proto/scheduling/v1"
 	"github.com/grpc/grpc/testctrl/svc/store"
 	"github.com/grpc/grpc/testctrl/svc/types"
@@ -33,11 +34,15 @@ type Scheduler interface {
 	Schedule(s *types.Session) error
 }
 
+// newSessionType is the type of the new session constructor.
+type newSessionType func(c *types.Component, w []*types.Component, s *pb.Scenario) *types.Session
+
 // SchedulingServer implements the scheduling service.
 type SchedulingServer struct {
 	scheduler  Scheduler
 	operations lrpb.OperationsServer
 	store      store.Store
+	newSession newSessionType
 }
 
 // NewSchedulingServer constructs a scheduling server from a scheduler,
@@ -47,6 +52,7 @@ func NewSchedulingServer(scheduler Scheduler, operations lrpb.OperationsServer, 
 		scheduler:  scheduler,
 		operations: operations,
 		store:      store,
+		newSession: types.NewSession,
 	}
 }
 
@@ -64,7 +70,7 @@ func (s *SchedulingServer) StartTestSession(ctx context.Context, req *svcpb.Star
 			types.ComponentKindFromProto(v.Kind),
 		)
 	}
-	session := types.NewSession(driver, workers, req.Scenario)
+	session := s.newSession(driver, workers, req.Scenario)
 	err = s.store.StoreSession(session)
 	if err != nil {
 		err = fmt.Errorf("error storing new test session: %v", err)
@@ -79,7 +85,7 @@ func (s *SchedulingServer) StartTestSession(ctx context.Context, req *svcpb.Star
 		)
 		return
 	}
-	operation, err = NewOperation(event, session)
+	operation, err = newOperation(event, session)
 	if err != nil {
 		err = fmt.Errorf(
 			"Error creating operation for new test session: %v",

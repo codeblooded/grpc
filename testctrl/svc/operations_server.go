@@ -165,24 +165,24 @@ func newOperationErrorProto(e *types.Event) (status *statuspb.Status, err error)
 		err = fmt.Errorf("cannot calculate operation error: failed precondition check")
 		return
 	}
-	var statusCode int32
+	var statusCode codepb.Code
 	switch e.Kind {
 	case types.InternalErrorEvent:
-		statusCode = int32(codepb.Code_INTERNAL)
+		statusCode = codepb.Code_INTERNAL
 	default:
-		statusCode = int32(codepb.Code_UNKNOWN)
+		statusCode = codepb.Code_UNKNOWN
 	}
 	status = &statuspb.Status{
-		Code:    statusCode,
+		Code:    int32(statusCode),
 		Message: e.Description,
 	}
 	return
 }
 
-// NewOperation constructs an operation proto from an Event object and a Session
+// newOperation constructs an operation proto from an Event object and a Session
 // object. This function returns en error if the operation proto cannot be
 // constructed.
-func NewOperation(e *types.Event, s *types.Session) (o *lrpb.Operation, err error) {
+func newOperation(e *types.Event, s *types.Session) (o *lrpb.Operation, err error) {
 	if s == nil {
 		err = fmt.Errorf("operation must correspond to a session")
 		return
@@ -247,7 +247,7 @@ func (o *OperationsServer) GetOperation(ctx context.Context, req *lrpb.GetOperat
 	if session == nil {
 		err = fmt.Errorf(
 			"operation name does not match an existing session: %q",
-			operation.Name,
+			req.Name,
 		)
 		return
 	}
@@ -256,7 +256,7 @@ func (o *OperationsServer) GetOperation(ctx context.Context, req *lrpb.GetOperat
 		err = fmt.Errorf("operation not found: %q", req.Name)
 		return
 	}
-	operation, err = NewOperation(latestEvent, session)
+	operation, err = newOperation(latestEvent, session)
 	return
 }
 
