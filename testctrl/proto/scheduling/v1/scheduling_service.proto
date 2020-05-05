@@ -90,6 +90,10 @@ message Component {
 
   // The kind which assigns the responsibilities of this container.
   Kind kind = 2;
+
+  // The pool where the component should run. This must match the "pool" label
+  // on a node to be scheduled on it.
+  string pool = 3;
 }
 
 message StartTestSessionRequest {
