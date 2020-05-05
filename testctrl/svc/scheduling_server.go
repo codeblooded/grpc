@@ -63,12 +63,14 @@ func (s *SchedulingServer) StartTestSession(ctx context.Context, req *svcpb.Star
 		req.Driver.ContainerImage,
 		types.DriverComponent,
 	)
+	driver.PoolName = req.Driver.Pool
 	workers := make([]*types.Component, len(req.Workers))
 	for i, v := range req.Workers {
 		workers[i] = types.NewComponent(
 			v.ContainerImage,
 			types.ComponentKindFromProto(v.Kind),
 		)
+		workers[i].PoolName = v.Pool
 	}
 	session := s.newSession(driver, workers, req.Scenario)
 	err = s.store.StoreSession(session)
