@@ -107,9 +107,10 @@ func newEventProto(e *types.Event) (eventpb *svcpb.Event, err error) {
 		return
 	}
 	eventpb = &svcpb.Event{
-		Subject: e.SubjectName,
-		Kind:    e.Kind.Proto(),
-		Time:    time,
+		Subject:     e.SubjectName,
+		Kind:        e.Kind.Proto(),
+		Description: e.Description,
+		Time:        time,
 	}
 	return
 }
