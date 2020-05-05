@@ -9,6 +9,7 @@ import (
 
 	grpcPb "github.com/codeblooded/grpc-proto/genproto/grpc/testing"
 	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 	svcpb "github.com/grpc/grpc/testctrl/proto/scheduling/v1"
 	lrpb "google.golang.org/genproto/googleapis/longrunning"
 	"google.golang.org/grpc"
@@ -64,6 +65,7 @@ func (sc *scenario) Set(scenarioJSON string) error {
 		return errors.New("a valid scenario is required, but missing")
 	}
 
+	sc.proto = &grpcPb.Scenario{}
 	err := jsonpb.UnmarshalString(scenarioJSON, sc.proto)
 	if err != nil {
 		return fmt.Errorf("could not parse scenario json: %v", err)
@@ -135,6 +137,7 @@ func Schedule(args []string) {
 	defer conn.Close()
 
 	scheduleClient := svcpb.NewSchedulingServiceClient(conn)
+	operationsClient := lrpb.NewOperationsClient(conn)
 
 	request := newScheduleRequest(flags)
 	operation, err := startTestSession(context.Background(), scheduleClient, request)
@@ -142,5 +145,29 @@ func Schedule(args []string) {
 		exit(SchedulingError, "scheduling session failed: %v", err)
 	}
 
-	fmt.Printf("operation: %v\n", operation)
+	fmt.Printf("operation: %v\n", proto.MarshalTextString(operation))
+
+	for {
+		operation, err := operationsClient.GetOperation(
+			context.Background(), &lrpb.GetOperationRequest{Name: operation.Name})
+		if err != nil {
+			exit(5, "mheh: %v", err)
+		}
+
+		var metadata svcpb.TestSessionMetadata
+		if err := proto.Unmarshal(operation.Metadata.GetValue(), &metadata); err == nil {
+			event := metadata.LatestEvent
+			fmt.Printf("%s [%s] %s\n", event.Time, event.Kind, event.Description)
+		}
+
+		if operation.Done {
+			var result svcpb.TestSessionResult
+			if err := proto.Unmarshal(operation.GetResponse().GetValue(), &result); err == nil {
+				fmt.Printf("%s\n", result.DriverLogs)
+			}
+
+			break
+		}
+		time.Sleep(5 * time.Second)
+	}
 }

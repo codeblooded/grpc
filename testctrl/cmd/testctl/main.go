@@ -28,13 +28,5 @@ func exit(code int, messageFmt string, args ...interface{}) {
 }
 
 func main() {
-	subcmd := os.Args[1]
-	subcmdArgs := os.Args[1:]
-
-	switch subcmd {
-	case "schedule":
-		Schedule(subcmdArgs)
-	default:
-		fmt.Printf("Better docs are coming soon. For now, run schedule -h\n")
-	}
+	Schedule(os.Args[1:])
 }
