@@ -80,7 +80,9 @@ func main() {
 		clientset = setupDevEnv(grpcServer)
 	}
 
-	controller, err := orch.NewController(clientset)
+	storageServer := store.NewStorageServer()
+
+	controller, err := orch.NewController(clientset, storageServer)
 	if err != nil {
 		glog.Fatalf("could not create a controller: %v", err)
 	}
@@ -96,7 +98,6 @@ func main() {
 		glog.Fatalf("failed to listen on port %d: %v", *port, err)
 	}
 
-	storageServer := store.NewStorageServer()
 	operationsServer := svc.NewOperationsServer(storageServer)
 
 	lrpb.RegisterOperationsServer(grpcServer, operationsServer)
