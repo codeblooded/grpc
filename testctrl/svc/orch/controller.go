@@ -228,7 +228,10 @@ func (c *Controller) spawnExecutor(session *types.Session) {
 	c.incExecutors()
 
 	go func() {
-		defer c.decExecutors()
+		defer func() {
+			c.decExecutors()
+			c.waitQueue.Done(session)
+		}()
 
 		if err := executor.Execute(session); err != nil {
 			glog.Infof("%v", err)

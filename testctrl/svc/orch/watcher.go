@@ -71,7 +71,7 @@ func (w *Watcher) Subscribe(sessionName string) (<-chan *PodWatchEvent, error) {
 		return nil, fmt.Errorf("session %v already has a follower", sessionName)
 	}
 
-	eventChan := make(chan *PodWatchEvent)
+	eventChan := make(chan *PodWatchEvent, eventBufferSize)
 	w.eventChans[sessionName] = eventChan
 	return eventChan, nil
 }
@@ -133,7 +133,16 @@ func (w *Watcher) publish(event *PodWatchEvent) {
 	defer w.mux.Unlock()
 
 	eventChan := w.eventChans[event.SessionName]
-	eventChan <- event
+	if eventChan == nil {
+		glog.Warningf("watcher: received event for session without subscriber: %v", event)
+		return
+	}
+
+	if len(eventChan) < cap(eventChan) {
+		eventChan <- event
+	} else {
+		glog.Warningf("watcher: too many events unread in subscriber channel, dropping: %v", event)
+	}
 }
 
 func (w *Watcher) diagnose(pod *corev1.Pod) (Health, error) {
@@ -192,3 +201,5 @@ type PodWatchEvent struct {
 	// Error may provide the error details that led to the failing health.
 	Error error
 }
+
+const eventBufferSize = 32
