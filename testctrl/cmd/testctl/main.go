@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"time"
 
-	grpcPb "github.com/codeblooded/grpc-proto/genproto/grpc/testing"
+	grpcpb "github.com/codeblooded/grpc-proto/genproto/grpc/testing"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
@@ -86,7 +86,7 @@ func (cl *clientList) Set(client string) error {
 // scenario wraps the scenario protobuf, implementing the flag.Value interface.
 // This allows it to be parsed alongside flags with primitive types.
 type scenario struct {
-	proto *grpcPb.Scenario
+	proto *grpcpb.Scenario
 }
 
 // String returns a string representation of the proto.
@@ -101,7 +101,7 @@ func (sc *scenario) Set(scenarioJSON string) error {
 		return errors.New("a valid scenario is required, but missing")
 	}
 
-	sc.proto = &grpcPb.Scenario{}
+	sc.proto = &grpcpb.Scenario{}
 	err := jsonpb.UnmarshalString(scenarioJSON, sc.proto)
 	if err != nil {
 		return fmt.Errorf("could not parse scenario json: %v", err)
