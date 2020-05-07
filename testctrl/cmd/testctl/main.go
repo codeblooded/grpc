@@ -222,7 +222,7 @@ func exit(code int, messageFmt string, args ...interface{}) {
 // reporting progress as it runs.
 func Schedule(args []string) {
 	flags := ScheduleFlags{}
-	scheduleFlags := flag.NewFlagSet("testctl schedule", flag.ExitOnError)
+	scheduleFlags := flag.NewFlagSet("testctl", flag.ExitOnError)
 	scheduleFlags.StringVar(&flags.address, "address", "127.0.0.1:50051", "host and port of the scheduling server")
 	scheduleFlags.StringVar(&flags.driver, "driver", "", "container image with a driver for testing")
 	scheduleFlags.StringVar(&flags.server, "server", "", "container image with a server for testing")
