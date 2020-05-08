@@ -1,6 +1,7 @@
 package orch
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
@@ -112,7 +113,7 @@ func (pwm *podWatcherMock) Watch(listOpts metav1.ListOptions) (watch.Interface, 
 
 type nodeListerMock struct {
 	nodes []corev1.Node
-	err error
+	err   error
 }
 
 func (nlm *nodeListerMock) List(_ metav1.ListOptions) (*corev1.NodeList, error) {
@@ -144,7 +145,7 @@ type executorMock struct {
 	sessionArg *types.Session
 }
 
-func (em *executorMock) Execute(session *types.Session) error {
+func (em *executorMock) Execute(_ context.Context, session *types.Session) error {
 	em.mux.Lock()
 	defer em.mux.Unlock()
 

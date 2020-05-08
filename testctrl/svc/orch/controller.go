@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -44,6 +45,7 @@ type Controller struct {
 	wg              sync.WaitGroup
 	mux             sync.Mutex
 	newExecutorFunc func() Executor
+	testTimeout	time.Duration
 }
 
 // ControllerOptions overrides the defaults of the controller, allowing it to be
@@ -58,6 +60,14 @@ type ControllerOptions struct {
 	// additional kubernetes events without blocking for reads. It defaults
 	// to 32 events.
 	WatchEventBufferSize int
+
+	// TestTimeout is the maximum duration to wait for component containers
+	// to provision and terminate with a successful exit code. If this
+	// timeout is reached before an exit, the session will error.
+	//
+	// The zero value provides unlimited time to the test, so it should be
+	// avoided in production.
+	TestTimeout time.Duration
 }
 
 // NewController creates a controller using a Kubernetes clientset, store and an
@@ -104,10 +114,16 @@ func NewController(clientset kubernetes.Interface, store store.Store, options *C
 		watcher:       NewWatcher(podInterface, watcherOpts),
 		store:         store,
 		executorCount: executorCount,
+		testTimeout:   opts.TestTimeout,
 	}
 
 	c.newExecutorFunc = func() Executor {
-		return newKubeExecutor(0, c.pcd, c.watcher, c.store)
+		return &kubeExecutor{
+			name:             uuid.New().String(),
+			pcd:              c.pcd,
+			watcher:          c.watcher,
+			store:            c.store,
+		}
 	}
 
 	return c, nil
@@ -269,12 +285,16 @@ func (c *Controller) spawnExecutor(session *types.Session) {
 	c.incExecutors()
 
 	go func() {
-		defer func() {
-			c.decExecutors()
-			c.waitQueue.Done(session)
-		}()
+		ctx, cancel := context.WithCancel(context.Background())
+		if c.testTimeout > 0 {
+			ctx, _ = context.WithTimeout(ctx, c.testTimeout)
+		}
 
-		if err := executor.Execute(session); err != nil {
+		defer cancel()
+		defer c.decExecutors()
+		defer c.waitQueue.Done(session)
+
+		if err := executor.Execute(ctx, session); err != nil {
 			glog.Infof("%v", err)
 		}
 	}()

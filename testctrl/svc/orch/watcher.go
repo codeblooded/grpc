@@ -29,7 +29,7 @@ type Watcher struct {
 	wi              watch.Interface
 }
 
-// WatcherOptions overrides the defaults of the controller, allowing it to be
+// WatcherOptions overrides the defaults of the watcher, allowing it to be
 // configured as needed.
 type WatcherOptions struct {
 	// EventBufferSize specifies the size of the buffered channel for each
