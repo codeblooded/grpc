@@ -1,6 +1,7 @@
 package orch
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -13,45 +14,40 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Executor executes sessions, returning an error if there is a problem with the infrastructure.
-// Executors are expected to provision, monitor and clean up resources related to a session.
-// An error is not indicative of a success or failure of the tests, but signals an orchestration
-// issue.
+// Executors can run a test session by provisioning its components, monitoring
+// its health and cleaning up after its termination.
 type Executor interface {
-	Execute(*types.Session) error
+	// Execute runs a test session. It accepts a context that can prevent
+	// problematic sessions from running indefinitely.
+	//
+	// An error is returned if there is a problem regarding the test itself.
+	// This does not include internal errors that are not specific to the
+	// test.
+	Execute(context.Context, *types.Session) error
 }
 
 type kubeExecutor struct {
-	name      string
-	watcher   *Watcher
-	eventChan <-chan *PodWatchEvent
-	session   *types.Session
-	pcd       podCreateDeleter
-	store     store.Store
+	name             string
+	watcher          *Watcher
+	pcd              podCreateDeleter
+	store            store.Store
+	session          *types.Session
+	eventChan        <-chan *PodWatchEvent
 }
 
-func newKubeExecutor(index int, pcd podCreateDeleter, watcher *Watcher, store store.Store) *kubeExecutor {
-	return &kubeExecutor{
-		name:    fmt.Sprintf("%d", index),
-		watcher: watcher,
-		pcd:     pcd,
-		store:   store,
-	}
-}
-
-func (k *kubeExecutor) Execute(session *types.Session) error {
+func (k *kubeExecutor) Execute(ctx context.Context, session *types.Session) error {
 	k.setSession(session)
 	k.writeEvent(types.AcceptEvent, nil, "kubernetes executor %v assigned session %v", k.name, session.Name)
 
 	k.writeEvent(types.ProvisionEvent, nil, "started provisioning components for session")
-	err := k.provision()
+	err := k.provision(ctx)
 	if err != nil {
 		err = fmt.Errorf("failed to provision: %v", err)
 		goto endSession
 	}
 
 	k.writeEvent(types.RunEvent, nil, "all containers appear healthy, monitoring during tests")
-	err = k.monitor()
+	err = k.monitor(ctx)
 	if err != nil {
 		err = fmt.Errorf("failed during test: %v", err)
 	}
@@ -84,7 +80,7 @@ endSession:
 	return nil
 }
 
-func (k *kubeExecutor) provision() error {
+func (k *kubeExecutor) provision(ctx context.Context) error {
 	var components []*types.Component
 	var workerIPs []string
 
@@ -125,7 +121,8 @@ func (k *kubeExecutor) provision() error {
 				default:
 					continue
 				}
-			// TODO(#54): Add timeout/deadline for provisioning resources
+			case <-ctx.Done():
+				return fmt.Errorf("provision did not complete before timeout")
 			default:
 				time.Sleep(1 * time.Second)
 			}
@@ -138,7 +135,7 @@ func (k *kubeExecutor) provision() error {
 	return nil
 }
 
-func (k *kubeExecutor) monitor() error {
+func (k *kubeExecutor) monitor(ctx context.Context) error {
 	glog.Infof("kubeExecutor[%v]: monitoring components while session %v runs", k.name, k.session.Name)
 
 	for {
@@ -150,8 +147,8 @@ func (k *kubeExecutor) monitor() error {
 			case Failed:
 				return fmt.Errorf("component %v has failed: %v", event.ComponentName, event.Error)
 			}
-
-			// TODO(#54): Add timeout/deadline for test execution (see concerns on GitHub)
+		case <-ctx.Done():
+			return fmt.Errorf("test did not complete before timeout")
 		}
 	}
 }

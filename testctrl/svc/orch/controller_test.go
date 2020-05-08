@@ -59,7 +59,7 @@ func TestControllerSchedule(t *testing.T) {
 
 			if tc.start {
 				controller.Start()
-				defer controller.Stop(context.TODO())
+				defer controller.Stop(context.Background())
 			}
 
 			err := controller.Schedule(tc.session)
@@ -87,7 +87,7 @@ func TestControllerStart(t *testing.T) {
 	t.Run("sets running state", func(t *testing.T) {
 		controller, _ := NewController(fake.NewSimpleClientset(), nil, nil)
 		controller.Start()
-		defer controller.Stop(context.TODO())
+		defer controller.Stop(context.Background())
 		if controller.Stopped() {
 			t.Errorf("Stopped unexpectedly returned true after starting controller")
 		}
@@ -198,7 +198,7 @@ func TestControllerStop(t *testing.T) {
 			go controller.loop()
 			time.Sleep(timeout)
 
-			ctx, cancel := context.WithTimeout(context.TODO(), tc.stopTimeout)
+			ctx, cancel := context.WithTimeout(context.Background(), tc.stopTimeout)
 			defer cancel()
 
 			err := controller.Stop(ctx)
