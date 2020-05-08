@@ -82,7 +82,8 @@ func main() {
 
 	storageServer := store.NewStorageServer()
 
-	controller, err := orch.NewController(clientset, storageServer)
+	controllerOpts := &orch.ControllerOptions{}
+	controller, err := orch.NewController(clientset, storageServer, controllerOpts)
 	if err != nil {
 		glog.Fatalf("could not create a controller: %v", err)
 	}

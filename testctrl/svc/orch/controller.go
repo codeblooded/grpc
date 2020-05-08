@@ -28,9 +28,6 @@ import (
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
 
-// executorCount specifies the maximum number of sessions that should be processed concurrently.
-const executorCount = 1
-
 // Controller serves as the coordinator for orchestrating sessions. It manages active and idle
 // sessions, as well as, interactions with Kubernetes through a set of a internal types.
 type Controller struct {
@@ -40,6 +37,7 @@ type Controller struct {
 	nl              NodeLister
 	watcher         *Watcher
 	waitQueue       *queue
+	executorCount   int
 	activeCount     int
 	running         bool
 	wg              sync.WaitGroup
@@ -47,23 +45,64 @@ type Controller struct {
 	newExecutorFunc func() Executor
 }
 
-// NewController creates a controller using a Kubernetes clientset and a store. The clientset allows
-// the controller to interact with Kubernetes. The store is used to report significant orchestration
-// events, so progress can be reported. A nil clientset will result in an error.
-func NewController(clientset kubernetes.Interface, store store.Store) (*Controller, error) {
+// ControllerOptions overrides the defaults of the controller, allowing it to be
+// configured as needed.
+type ControllerOptions struct {
+	// ExecutorCount specifies the maximum number of sessions that should be
+	// processed at a time. It defaults to 1, disabling concurrent sessions.
+	ExecutorCount int
+
+	// WatchEventBufferSize specifies the size of the buffered channel for
+	// each channel the watcher creates. It allows the watcher to write
+	// additional kubernetes events without blocking for reads. It defaults
+	// to 32 events.
+	WatchEventBufferSize int
+}
+
+// NewController creates a controller using a Kubernetes clientset, store and an
+// optional ControllerOptions instance.
+//
+// The clientset allows the controller to interact with Kubernetes. If nil, an
+// error will be returned instead of a controller.
+//
+// The store is used to report orchestration events, so progress can be reported
+// to a user.
+//
+// The options value allows the controller to be customized. Specifying nil will
+// configure the controller to sane defaults described in the ControllerOptions
+// documentation.
+func NewController(clientset kubernetes.Interface, store store.Store, options *ControllerOptions) (*Controller, error) {
 	if clientset == nil {
 		return nil, errors.New("cannot create controller from nil kubernetes clientset")
+	}
+
+	opts := options
+	if opts == nil {
+		opts = &ControllerOptions{}
+	}
+
+	executorCount := opts.ExecutorCount
+	if executorCount == 0 {
+		executorCount = 1
+	}
+
+	watcherOpts := &WatcherOptions{
+		EventBufferSize: opts.WatchEventBufferSize,
+	}
+	if watcherOpts.EventBufferSize == 0 {
+		watcherOpts.EventBufferSize = 32
 	}
 
 	coreV1Interface := clientset.CoreV1()
 	podInterface := coreV1Interface.Pods(corev1.NamespaceDefault)
 
 	c := &Controller{
-		pcd:     podInterface,
-		pw:      podInterface,
-		nl:      coreV1Interface.Nodes(),
-		watcher: NewWatcher(podInterface),
-		store:   store,
+		pcd:           podInterface,
+		pw:            podInterface,
+		nl:            coreV1Interface.Nodes(),
+		watcher:       NewWatcher(podInterface, watcherOpts),
+		store:         store,
+		executorCount: executorCount,
 	}
 
 	c.newExecutorFunc = func() Executor {
@@ -197,7 +236,7 @@ func (c *Controller) next() (session *types.Session, quit bool) {
 		return nil, true
 	}
 
-	if c.activeCount > executorCount {
+	if c.activeCount > c.executorCount {
 		return nil, false
 	}
 

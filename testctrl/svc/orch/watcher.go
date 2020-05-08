@@ -21,19 +21,40 @@ import (
 //
 // Create watcher instances with the NewWatcher constructor, not a literal.
 type Watcher struct {
-	eventChans map[string]chan *PodWatchEvent
-	pw         podWatcher
-	quit       chan struct{}
-	mux        sync.Mutex
-	wi         watch.Interface
+	eventChans      map[string]chan *PodWatchEvent
+	eventBufferSize int
+	pw              podWatcher
+	quit            chan struct{}
+	mux             sync.Mutex
+	wi              watch.Interface
+}
+
+// WatcherOptions overrides the defaults of the controller, allowing it to be
+// configured as needed.
+type WatcherOptions struct {
+	// EventBufferSize specifies the size of the buffered channel for each
+	// session. It allows the watcher to write additional kubernetes events
+	// without blocking for reads. It defaults to 32 events.
+	EventBufferSize int
 }
 
 // NewWatcher creates and prepares a new watcher instance.
-func NewWatcher(pw podWatcher) *Watcher {
+func NewWatcher(pw podWatcher, options *WatcherOptions) *Watcher {
+	opts := options
+	if opts == nil {
+		opts = &WatcherOptions{}
+	}
+
+	eventBufferSize := opts.EventBufferSize
+	if eventBufferSize == 0 {
+		eventBufferSize = 32
+	}
+
 	return &Watcher{
-		eventChans: make(map[string]chan *PodWatchEvent),
-		pw:         pw,
-		quit:       make(chan struct{}),
+		eventChans:      make(map[string]chan *PodWatchEvent),
+		eventBufferSize: eventBufferSize,
+		pw:              pw,
+		quit:            make(chan struct{}),
 	}
 }
 
@@ -71,7 +92,7 @@ func (w *Watcher) Subscribe(sessionName string) (<-chan *PodWatchEvent, error) {
 		return nil, fmt.Errorf("session %v already has a follower", sessionName)
 	}
 
-	eventChan := make(chan *PodWatchEvent, eventBufferSize)
+	eventChan := make(chan *PodWatchEvent, w.eventBufferSize)
 	w.eventChans[sessionName] = eventChan
 	return eventChan, nil
 }
@@ -201,5 +222,3 @@ type PodWatchEvent struct {
 	// Error may provide the error details that led to the failing health.
 	Error error
 }
-
-const eventBufferSize = 32

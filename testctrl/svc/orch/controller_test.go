@@ -11,7 +11,7 @@ import (
 
 func TestNewController(t *testing.T) {
 	t.Run("nil clientset returns error", func(t *testing.T) {
-		controller, err := NewController(nil, nil)
+		controller, err := NewController(nil, nil, nil)
 		if err == nil {
 			t.Errorf("no error returned for nil clientset")
 		}
@@ -50,7 +50,7 @@ func TestControllerSchedule(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.description, func(t *testing.T) {
-			controller, _ := NewController(fake.NewSimpleClientset(), nil)
+			controller, _ := NewController(fake.NewSimpleClientset(), nil, nil)
 			executor := &executorMock{}
 			controller.newExecutorFunc = func() Executor {
 				return executor
@@ -84,7 +84,7 @@ func TestControllerSchedule(t *testing.T) {
 
 func TestControllerStart(t *testing.T) {
 	t.Run("sets running state", func(t *testing.T) {
-		controller, _ := NewController(fake.NewSimpleClientset(), nil)
+		controller, _ := NewController(fake.NewSimpleClientset(), nil, nil)
 		controller.Start()
 		defer controller.Stop(0)
 		if controller.Stopped() {
@@ -112,7 +112,7 @@ func TestControllerStart(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.description, func(t *testing.T) {
-			controller, _ := NewController(fake.NewSimpleClientset(), nil)
+			controller, _ := NewController(fake.NewSimpleClientset(), nil, nil)
 			controller.waitQueue = newQueue(limitlessTracker{})
 
 			if tc.mockNL != nil {
@@ -121,7 +121,7 @@ func TestControllerStart(t *testing.T) {
 
 			if tc.mockPW != nil {
 				controller.pw = tc.mockPW
-				controller.watcher = NewWatcher(tc.mockPW)
+				controller.watcher = NewWatcher(tc.mockPW, nil)
 			}
 
 			err := controller.Start()
@@ -170,7 +170,7 @@ func TestControllerStop(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.description, func(t *testing.T) {
-			controller, _ := NewController(fake.NewSimpleClientset(), nil)
+			controller, _ := NewController(fake.NewSimpleClientset(), nil, nil)
 			controller.running = true
 			controller.waitQueue = newQueue(limitlessTracker{})
 
