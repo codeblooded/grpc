@@ -1,6 +1,7 @@
 package orch
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -58,7 +59,7 @@ func TestControllerSchedule(t *testing.T) {
 
 			if tc.start {
 				controller.Start()
-				defer controller.Stop(0)
+				defer controller.Stop(context.TODO())
 			}
 
 			err := controller.Schedule(tc.session)
@@ -86,7 +87,7 @@ func TestControllerStart(t *testing.T) {
 	t.Run("sets running state", func(t *testing.T) {
 		controller, _ := NewController(fake.NewSimpleClientset(), nil, nil)
 		controller.Start()
-		defer controller.Stop(0)
+		defer controller.Stop(context.TODO())
 		if controller.Stopped() {
 			t.Errorf("Stopped unexpectedly returned true after starting controller")
 		}
@@ -196,7 +197,11 @@ func TestControllerStop(t *testing.T) {
 
 			go controller.loop()
 			time.Sleep(timeout)
-			err := controller.Stop(tc.stopTimeout)
+
+			ctx, cancel := context.WithTimeout(context.TODO(), tc.stopTimeout)
+			defer cancel()
+
+			err := controller.Stop(ctx)
 			if tc.shouldError && err == nil {
 				t.Errorf("executors unexpectedly finished before timeout")
 			} else if !tc.shouldError && err != nil {

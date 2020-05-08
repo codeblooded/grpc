@@ -15,6 +15,7 @@
 package orch
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -158,15 +159,16 @@ func (c *Controller) Start() error {
 	return nil
 }
 
-// Stop attempts to terminate all orchestration threads spawned by a call to Start. It waits for a
-// graceful shutdown until for a specified timeout.
+// Stop attempts to terminate all orchestration threads spawned by a call to
+// Start. It waits for a graceful shutdown until the context is cancelled.
 //
-// If the timeout is reached before shutdown, an improper shutdown will occur. This may result in
-// unpredictable states for running sessions and their resources. To signal these potential issues,
-// an error is returned when this occurs.
+// If the context is cancelled before a graceful shutdown, an error is returned.
+// This improper shutdown may result in unpredictable states. It should be
+// avoided if possible.
 //
-// If Start was not called prior to Stop, there will be no adverse effects and nil will be returned.
-func (c *Controller) Stop(timeout time.Duration) error {
+// If Start was not called prior to Stop, there will be no adverse effects and
+// nil will be returned.
+func (c *Controller) Stop(ctx context.Context) error {
 	defer c.watcher.Stop()
 
 	c.mux.Lock()
@@ -182,7 +184,7 @@ func (c *Controller) Stop(timeout time.Duration) error {
 	select {
 	case <-done:
 		glog.Infof("controller: executors safely exited")
-	case <-time.After(timeout):
+	case <-ctx.Done():
 		glog.Warning("controller: unable to wait for executors to safely exit, timed out")
 		return fmt.Errorf("executors did not safely exit before timeout")
 	}

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net"
@@ -92,7 +93,9 @@ func main() {
 		glog.Fatalf("unable to start orchestration controller: %v", err)
 	}
 
-	defer controller.Stop(*shutdownTimeout)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), *shutdownTimeout)
+	defer cancel()
+	defer controller.Stop(shutdownCtx)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
