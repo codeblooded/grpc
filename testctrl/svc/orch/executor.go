@@ -56,18 +56,12 @@ endSession:
 	logs, logErr := k.getDriverLogs()
 	if logErr != nil {
 		logErr = fmt.Errorf("failed to fetch logs from driver: %v", logErr)
+		k.writeEvent(types.InternalErrorEvent, nil, logErr.Error())
 	}
 
 	cleanErr := k.clean()
 	if cleanErr != nil {
 		cleanErr = fmt.Errorf("failed to tear-down resources: %v", cleanErr)
-	}
-
-	if logErr != nil {
-		k.writeEvent(types.InternalErrorEvent, nil, logErr.Error())
-	}
-
-	if cleanErr != nil {
 		k.writeEvent(types.InternalErrorEvent, logs, cleanErr.Error())
 	}
 
