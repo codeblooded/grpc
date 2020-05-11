@@ -55,11 +55,10 @@ type ControllerOptions struct {
 	// processed at a time. It defaults to 1, disabling concurrent sessions.
 	ExecutorCount int
 
-	// WatchEventBufferSize specifies the size of the buffered channel for
-	// each channel the watcher creates. It allows the watcher to write
-	// additional kubernetes events without blocking for reads. It defaults
-	// to 32 events.
-	WatchEventBufferSize int
+	// WatcherOptions overrides the defaults of the watcher. The watcher
+	// listens for Kubernetes events and reports the health of components
+	// to the session's executor.
+	WatcherOptions *WatcherOptions
 
 	// TestTimeout is the maximum duration to wait for component containers
 	// to provision and terminate with a successful exit code. If this
@@ -97,13 +96,6 @@ func NewController(clientset kubernetes.Interface, store store.Store, options *C
 		executorCount = 1
 	}
 
-	watcherOpts := &WatcherOptions{
-		EventBufferSize: opts.WatchEventBufferSize,
-	}
-	if watcherOpts.EventBufferSize == 0 {
-		watcherOpts.EventBufferSize = 32
-	}
-
 	coreV1Interface := clientset.CoreV1()
 	podInterface := coreV1Interface.Pods(corev1.NamespaceDefault)
 
@@ -111,7 +103,7 @@ func NewController(clientset kubernetes.Interface, store store.Store, options *C
 		pcd:           podInterface,
 		pw:            podInterface,
 		nl:            coreV1Interface.Nodes(),
-		watcher:       NewWatcher(podInterface, watcherOpts),
+		watcher:       NewWatcher(podInterface, opts.WatcherOptions),
 		store:         store,
 		executorCount: executorCount,
 		testTimeout:   opts.TestTimeout,
