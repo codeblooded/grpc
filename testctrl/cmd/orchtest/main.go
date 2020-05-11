@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"os"
@@ -49,11 +50,14 @@ func main() {
 		glog.Fatalf("Invalid config file specified by the KUBE_CONFIG_FILE env variable, unable to connect: %v", err)
 	}
 
-	c, _ := orch.NewController(clientset, nil)
+	c, _ := orch.NewController(clientset, nil, nil)
 	if err := c.Start(); err != nil {
 		panic(err)
 	}
-	defer c.Stop(*timeout)
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+	defer c.Stop(shutdownCtx)
 
 	go func() {
 		for i := 0; i < *count; i++ {

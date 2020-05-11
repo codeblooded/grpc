@@ -28,7 +28,7 @@ func TestWatcherStart(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.description, func(t *testing.T) {
-			w := NewWatcher(tc.mock)
+			w := NewWatcher(tc.mock, nil)
 
 			defer w.Stop()
 			err := w.Start()
@@ -49,7 +49,7 @@ func TestWatcherStop(t *testing.T) {
 
 	wi := watch.NewRaceFreeFake()
 	mock := &podWatcherMock{wi: wi}
-	w := NewWatcher(mock)
+	w := NewWatcher(mock, nil)
 
 	if err = w.Start(); err != nil {
 		t.Fatalf("setup failed, Start returned error: %v", err)
@@ -76,7 +76,7 @@ func TestWatcherSubscribe(t *testing.T) {
 	var event *PodWatchEvent
 	timeout := 100 * time.Millisecond * timeMultiplier
 
-	w := NewWatcher(nil)
+	w := NewWatcher(nil, nil)
 	sharedSessionName := "double-subscription"
 	_, _ = w.Subscribe(sharedSessionName)
 	if _, err = w.Subscribe(sharedSessionName); err == nil {
@@ -85,7 +85,7 @@ func TestWatcherSubscribe(t *testing.T) {
 
 	wi := watch.NewRaceFreeFake()
 	mock := &podWatcherMock{wi: wi}
-	w = NewWatcher(mock)
+	w = NewWatcher(mock, nil)
 
 	if err = w.Start(); err != nil {
 		t.Fatalf("setup failed, Start returned error: %v", err)
@@ -140,7 +140,7 @@ func TestWatcherUnsubscribe(t *testing.T) {
 
 	// test an error is returned without subscription
 	t.Run("no subscription", func(t *testing.T) {
-		w := NewWatcher(nil)
+		w := NewWatcher(nil, nil)
 		if err := w.Unsubscribe("non-existent"); err == nil {
 			t.Errorf("did not return an error for Unsubscribe call without subscription")
 		}
@@ -150,7 +150,7 @@ func TestWatcherUnsubscribe(t *testing.T) {
 	t.Run("prevents further events", func(t *testing.T) {
 		wi := watch.NewRaceFreeFake()
 		mock := &podWatcherMock{wi: wi}
-		w := NewWatcher(mock)
+		w := NewWatcher(mock, nil)
 
 		if err = w.Start(); err != nil {
 			t.Fatalf("setup failed, Start returned error: %v", err)

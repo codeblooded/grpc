@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net"
@@ -64,6 +65,7 @@ func setupDevEnv(grpcServer *grpc.Server) *kubernetes.Clientset {
 
 func main() {
 	port := flag.Int("port", 50051, "Port to start the service.")
+	testTimeout := flag.Duration("testTimeout", 15*time.Minute, "Maximum time tests are allowed to run")
 	shutdownTimeout := flag.Duration("shutdownTimeout", 5*time.Minute, "Time alloted to a graceful shutdown.")
 	flag.Parse()
 	defer glog.Flush()
@@ -82,7 +84,10 @@ func main() {
 
 	storageServer := store.NewStorageServer()
 
-	controller, err := orch.NewController(clientset, storageServer)
+	controllerOpts := &orch.ControllerOptions{
+		TestTimeout: *testTimeout,
+	}
+	controller, err := orch.NewController(clientset, storageServer, controllerOpts)
 	if err != nil {
 		glog.Fatalf("could not create a controller: %v", err)
 	}
@@ -91,7 +96,9 @@ func main() {
 		glog.Fatalf("unable to start orchestration controller: %v", err)
 	}
 
-	defer controller.Stop(*shutdownTimeout)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), *shutdownTimeout)
+	defer cancel()
+	defer controller.Stop(shutdownCtx)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {

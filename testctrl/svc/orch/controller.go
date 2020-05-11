@@ -15,11 +15,13 @@
 package orch
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -27,9 +29,6 @@ import (
 	"github.com/grpc/grpc/testctrl/svc/store"
 	"github.com/grpc/grpc/testctrl/svc/types"
 )
-
-// executorCount specifies the maximum number of sessions that should be processed concurrently.
-const executorCount = 1
 
 // Controller serves as the coordinator for orchestrating sessions. It manages active and idle
 // sessions, as well as, interactions with Kubernetes through a set of a internal types.
@@ -40,34 +39,83 @@ type Controller struct {
 	nl              NodeLister
 	watcher         *Watcher
 	waitQueue       *queue
+	executorCount   int
 	activeCount     int
 	running         bool
 	wg              sync.WaitGroup
 	mux             sync.Mutex
 	newExecutorFunc func() Executor
+	testTimeout	time.Duration
 }
 
-// NewController creates a controller using a Kubernetes clientset and a store. The clientset allows
-// the controller to interact with Kubernetes. The store is used to report significant orchestration
-// events, so progress can be reported. A nil clientset will result in an error.
-func NewController(clientset kubernetes.Interface, store store.Store) (*Controller, error) {
+// ControllerOptions overrides the defaults of the controller, allowing it to be
+// configured as needed.
+type ControllerOptions struct {
+	// ExecutorCount specifies the maximum number of sessions that should be
+	// processed at a time. It defaults to 1, disabling concurrent sessions.
+	ExecutorCount int
+
+	// WatcherOptions overrides the defaults of the watcher. The watcher
+	// listens for Kubernetes events and reports the health of components
+	// to the session's executor.
+	WatcherOptions *WatcherOptions
+
+	// TestTimeout is the maximum duration to wait for component containers
+	// to provision and terminate with a successful exit code. If this
+	// timeout is reached before an exit, the session will error.
+	//
+	// The zero value provides unlimited time to the test, so it should be
+	// avoided in production.
+	TestTimeout time.Duration
+}
+
+// NewController creates a controller using a Kubernetes clientset, store and an
+// optional ControllerOptions instance.
+//
+// The clientset allows the controller to interact with Kubernetes. If nil, an
+// error will be returned instead of a controller.
+//
+// The store is used to report orchestration events, so progress can be reported
+// to a user.
+//
+// The options value allows the controller to be customized. Specifying nil will
+// configure the controller to sane defaults. These defaults are described in
+// the ControllerOptions documentation.
+func NewController(clientset kubernetes.Interface, store store.Store, options *ControllerOptions) (*Controller, error) {
 	if clientset == nil {
 		return nil, errors.New("cannot create controller from nil kubernetes clientset")
+	}
+
+	opts := options
+	if opts == nil {
+		opts = &ControllerOptions{}
+	}
+
+	executorCount := opts.ExecutorCount
+	if executorCount == 0 {
+		executorCount = 1
 	}
 
 	coreV1Interface := clientset.CoreV1()
 	podInterface := coreV1Interface.Pods(corev1.NamespaceDefault)
 
 	c := &Controller{
-		pcd:     podInterface,
-		pw:      podInterface,
-		nl:      coreV1Interface.Nodes(),
-		watcher: NewWatcher(podInterface),
-		store:   store,
+		pcd:           podInterface,
+		pw:            podInterface,
+		nl:            coreV1Interface.Nodes(),
+		watcher:       NewWatcher(podInterface, opts.WatcherOptions),
+		store:         store,
+		executorCount: executorCount,
+		testTimeout:   opts.TestTimeout,
 	}
 
 	c.newExecutorFunc = func() Executor {
-		return newKubeExecutor(0, c.pcd, c.watcher, c.store)
+		return &kubeExecutor{
+			name:             uuid.New().String(),
+			pcd:              c.pcd,
+			watcher:          c.watcher,
+			store:            c.store,
+		}
 	}
 
 	return c, nil
@@ -119,15 +167,16 @@ func (c *Controller) Start() error {
 	return nil
 }
 
-// Stop attempts to terminate all orchestration threads spawned by a call to Start. It waits for a
-// graceful shutdown until for a specified timeout.
+// Stop attempts to terminate all orchestration threads spawned by a call to
+// Start. It waits for a graceful shutdown until the context is cancelled.
 //
-// If the timeout is reached before shutdown, an improper shutdown will occur. This may result in
-// unpredictable states for running sessions and their resources. To signal these potential issues,
-// an error is returned when this occurs.
+// If the context is cancelled before a graceful shutdown, an error is returned.
+// This improper shutdown may result in unpredictable states. It should be
+// avoided if possible.
 //
-// If Start was not called prior to Stop, there will be no adverse effects and nil will be returned.
-func (c *Controller) Stop(timeout time.Duration) error {
+// If Start was not called prior to Stop, there will be no adverse effects and
+// nil will be returned.
+func (c *Controller) Stop(ctx context.Context) error {
 	defer c.watcher.Stop()
 
 	c.mux.Lock()
@@ -143,7 +192,7 @@ func (c *Controller) Stop(timeout time.Duration) error {
 	select {
 	case <-done:
 		glog.Infof("controller: executors safely exited")
-	case <-time.After(timeout):
+	case <-ctx.Done():
 		glog.Warning("controller: unable to wait for executors to safely exit, timed out")
 		return fmt.Errorf("executors did not safely exit before timeout")
 	}
@@ -197,7 +246,7 @@ func (c *Controller) next() (session *types.Session, quit bool) {
 		return nil, true
 	}
 
-	if c.activeCount > executorCount {
+	if c.activeCount > c.executorCount {
 		return nil, false
 	}
 
@@ -228,12 +277,16 @@ func (c *Controller) spawnExecutor(session *types.Session) {
 	c.incExecutors()
 
 	go func() {
-		defer func() {
-			c.decExecutors()
-			c.waitQueue.Done(session)
-		}()
+		ctx, cancel := context.WithCancel(context.Background())
+		if c.testTimeout > 0 {
+			ctx, _ = context.WithTimeout(ctx, c.testTimeout)
+		}
 
-		if err := executor.Execute(session); err != nil {
+		defer cancel()
+		defer c.decExecutors()
+		defer c.waitQueue.Done(session)
+
+		if err := executor.Execute(ctx, session); err != nil {
 			glog.Infof("%v", err)
 		}
 	}()

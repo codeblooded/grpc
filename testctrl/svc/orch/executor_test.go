@@ -1,9 +1,11 @@
 package orch
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,105 +15,178 @@ import (
 )
 
 func TestKubeExecutorProvision(t *testing.T) {
-	// test provision with successful pods
-	fakePodInf := newFakePodInterface(t)
 
-	driver := types.NewComponent(testContainerImage, types.DriverComponent)
-	server := types.NewComponent(testContainerImage, types.ServerComponent)
-	client := types.NewComponent(testContainerImage, types.ClientComponent)
-
-	components := []*types.Component{server, client, driver}
-	session := types.NewSession(driver, components[:2], nil)
-
-	e := newKubeExecutor(0, fakePodInf, nil, nil)
-	eventChan := make(chan *PodWatchEvent)
-	e.eventChan = eventChan
-	e.session = session
-
-	go func() {
-		for _, c := range components {
-			eventChan <- &PodWatchEvent{
-				SessionName:   session.Name,
-				ComponentName: c.Name,
-				Pod:           nil,
-				PodIP:         "127.0.0.1",
-				Health:        Ready,
-				Error:         nil,
-			}
-		}
-	}()
-
-	if err := e.provision(); err != nil {
-		t.Fatalf("unexpected error in provision: %v", err)
+	cases := []struct {
+		description string
+		events      []fakeWatchEvent
+		ctxTimeout  time.Duration
+		errors      bool
+	}{
+		{
+			description: "successful pods",
+			events: []fakeWatchEvent{
+				{
+					component: types.ServerComponent,
+					health:    Ready,
+					podIP:     "127.0.0.1",
+				},
+				{
+					component: types.ClientComponent,
+					health:    Ready,
+					podIP:     "127.0.0.1",
+				},
+				{
+					component: types.DriverComponent,
+					health:    Ready,
+					podIP:     "127.0.0.1",
+				},
+			},
+			errors: false,
+		},
+		{
+			description: "failed driver pod",
+			events: []fakeWatchEvent{
+				{
+					component: types.ServerComponent,
+					health:    Ready,
+					podIP:     "127.0.0.1",
+				},
+				{
+					component: types.ClientComponent,
+					health:    Ready,
+					podIP:     "127.0.0.1",
+				},
+				{
+					component: types.DriverComponent,
+					health:    Failed,
+					podIP:     "127.0.0.1",
+				},
+			},
+			errors: true,
+		},
+		{
+			description: "cancelled context",
+			ctxTimeout:  1 * time.Millisecond * timeMultiplier,
+			events: []fakeWatchEvent{
+				{
+					component: types.ServerComponent,
+					sleep:     10 * time.Second * timeMultiplier,
+					health:    Succeeded,
+					podIP:     "127.0.0.1",
+				},
+				{
+					component: types.ClientComponent,
+					sleep:     10 * time.Second * timeMultiplier,
+					health:    Succeeded,
+					podIP:     "127.0.0.1",
+				},
+				{
+					component: types.DriverComponent,
+					sleep:     10 * time.Second * timeMultiplier,
+					health:    Succeeded,
+					podIP:     "127.0.0.1",
+				},
+			},
+			errors: true,
+		},
 	}
 
-	pods, err := listPods(t, fakePodInf)
-	if err != nil {
-		t.Fatalf("could not list pods from provision: %v", err)
-	}
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			fakePodInf := newFakePodInterface(t)
 
-	expectedNames := []string{driver.Name, server.Name, client.Name}
-	for _, en := range expectedNames {
-		found := false
+			server := types.NewComponent(testContainerImage, types.ServerComponent)
+			client := types.NewComponent(testContainerImage, types.ClientComponent)
+			driver := types.NewComponent(testContainerImage, types.DriverComponent)
 
-		for _, pod := range pods {
-			if strings.Compare(pod.ObjectMeta.Name, en) == 0 {
-				found = true
+			components := []*types.Component{server, client, driver}
+			session := types.NewSession(driver, components[:2], nil)
+
+			e := &kubeExecutor{
+				name:    "provision-test-executor",
+				pcd:     fakePodInf,
+				watcher: nil,
+				store:   nil,
 			}
-		}
+			eventChan := make(chan *PodWatchEvent)
+			e.eventChan = eventChan
+			e.session = session
 
-		if !found {
-			t.Errorf("provision did not create pod for component %v", en)
-		}
-	}
+			go func() {
+				for _, event := range tc.events {
+					var component *types.Component
 
-	// test provision with an unsuccessful pod
-	fakePodInf = newFakePodInterface(t)
+					switch event.component {
+					case types.ServerComponent:
+						component = server
+					case types.ClientComponent:
+						component = client
+					case types.DriverComponent:
+						component = driver
+					default:
+						t.Fatalf("bad component kind")
+					}
 
-	driver = types.NewComponent(testContainerImage, types.DriverComponent)
-	server = types.NewComponent(testContainerImage, types.ServerComponent)
-	client = types.NewComponent(testContainerImage, types.ClientComponent)
+					time.Sleep(event.sleep)
+					eventChan <- &PodWatchEvent{
+						SessionName:   session.Name,
+						ComponentName: component.Name,
+						Pod:           nil,
+						PodIP:         event.podIP,
+						Health:        event.health,
+						Error:         nil,
+					}
+				}
+			}()
 
-	components = []*types.Component{server, client, driver}
-	session = types.NewSession(driver, components[:2], nil)
-
-	e = newKubeExecutor(0, fakePodInf, nil, nil)
-	eventChan = make(chan *PodWatchEvent)
-	e.eventChan = eventChan
-	e.session = session
-
-	go func() {
-		for _, c := range components[:2] {
-			eventChan <- &PodWatchEvent{
-				SessionName:   session.Name,
-				ComponentName: c.Name,
-				Pod:           nil,
-				PodIP:         "127.0.0.1",
-				Health:        Ready,
-				Error:         nil,
+			ctx, cancel := context.WithCancel(context.Background())
+			if tc.ctxTimeout > 0 {
+				ctx, _ = context.WithTimeout(ctx, tc.ctxTimeout)
 			}
-		}
+			defer cancel()
 
-		eventChan <- &PodWatchEvent{
-			SessionName:   session.Name,
-			ComponentName: components[2].Name,
-			Pod:           nil,
-			PodIP:         "",
-			Health:        Failed,
-			Error:         nil,
-		}
-	}()
+			err := e.provision(ctx)
+			if tc.errors {
+				if err == nil {
+					t.Fatalf("provision did not error")
+				}
+				return
+			}
 
-	if err := e.provision(); err == nil {
-		t.Errorf("expected error for failing pod, but returned nil")
+			if err != nil {
+				t.Fatalf("unexpected error in provision: %v", err)
+			}
+
+			pods, err := listPods(t, fakePodInf)
+			if err != nil {
+				t.Fatalf("could not list pods from provision: %v", err)
+			}
+
+			expectedNames := []string{driver.Name, server.Name, client.Name}
+			for _, en := range expectedNames {
+				found := false
+
+				for _, pod := range pods {
+					if strings.Compare(pod.ObjectMeta.Name, en) == 0 {
+						found = true
+					}
+				}
+
+				if !found {
+					t.Errorf("provision did not create pod for component %v", en)
+				}
+			}
+		})
 	}
 }
 
 func TestKubeExecutorMonitor(t *testing.T) {
 	cases := []struct {
-		description string
-		event       *PodWatchEvent
-		errors      bool
+		description  string
+		event        *PodWatchEvent
+		eventTimeout time.Duration
+		ctxTimeout   time.Duration
+		errors       bool
 	}{
 		{
 			description: "success event received",
@@ -122,6 +197,13 @@ func TestKubeExecutorMonitor(t *testing.T) {
 			description: "failure event received",
 			event:       &PodWatchEvent{Health: Failed},
 			errors:      true,
+		},
+		{
+			description:  "cancelled context",
+			event:        &PodWatchEvent{Health: Succeeded},
+			eventTimeout: 10 * time.Second * timeMultiplier,
+			ctxTimeout:   1 * time.Millisecond * timeMultiplier,
+			errors:       true,
 		},
 	}
 
@@ -136,12 +218,18 @@ func TestKubeExecutorMonitor(t *testing.T) {
 			components := []*types.Component{server, client, driver}
 			session := types.NewSession(driver, components[:2], nil)
 
-			e := newKubeExecutor(0, fakePodInf, nil, nil)
+			e := &kubeExecutor{
+				name:    "",
+				pcd:     fakePodInf,
+				watcher: nil,
+				store:   nil,
+			}
 			eventChan := make(chan *PodWatchEvent)
 			e.eventChan = eventChan
 			e.session = session
 
 			go func() {
+				time.Sleep(tc.eventTimeout)
 				eventChan <- &PodWatchEvent{
 					SessionName:   session.Name,
 					ComponentName: driver.Name,
@@ -152,7 +240,13 @@ func TestKubeExecutorMonitor(t *testing.T) {
 				}
 			}()
 
-			err := e.monitor()
+			ctx, cancel := context.WithCancel(context.Background())
+			if tc.ctxTimeout > 0 {
+				ctx, _ = context.WithTimeout(ctx, tc.ctxTimeout)
+			}
+			defer cancel()
+
+			err := e.monitor(ctx)
 			if err == nil && tc.errors {
 				t.Errorf("case '%v' did not return error", tc.description)
 			} else if err != nil && !tc.errors {
@@ -160,6 +254,13 @@ func TestKubeExecutorMonitor(t *testing.T) {
 			}
 		})
 	}
+}
+
+type fakeWatchEvent struct {
+	component types.ComponentKind
+	health    Health
+	sleep     time.Duration
+	podIP     string
 }
 
 // TODO(@codeblooded): Refactor clean method, or choose to not test this method

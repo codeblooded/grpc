@@ -1,6 +1,7 @@
 package orch
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -11,7 +12,7 @@ import (
 
 func TestNewController(t *testing.T) {
 	t.Run("nil clientset returns error", func(t *testing.T) {
-		controller, err := NewController(nil, nil)
+		controller, err := NewController(nil, nil, nil)
 		if err == nil {
 			t.Errorf("no error returned for nil clientset")
 		}
@@ -50,7 +51,7 @@ func TestControllerSchedule(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.description, func(t *testing.T) {
-			controller, _ := NewController(fake.NewSimpleClientset(), nil)
+			controller, _ := NewController(fake.NewSimpleClientset(), nil, nil)
 			executor := &executorMock{}
 			controller.newExecutorFunc = func() Executor {
 				return executor
@@ -58,7 +59,7 @@ func TestControllerSchedule(t *testing.T) {
 
 			if tc.start {
 				controller.Start()
-				defer controller.Stop(0)
+				defer controller.Stop(context.Background())
 			}
 
 			err := controller.Schedule(tc.session)
@@ -84,9 +85,9 @@ func TestControllerSchedule(t *testing.T) {
 
 func TestControllerStart(t *testing.T) {
 	t.Run("sets running state", func(t *testing.T) {
-		controller, _ := NewController(fake.NewSimpleClientset(), nil)
+		controller, _ := NewController(fake.NewSimpleClientset(), nil, nil)
 		controller.Start()
-		defer controller.Stop(0)
+		defer controller.Stop(context.Background())
 		if controller.Stopped() {
 			t.Errorf("Stopped unexpectedly returned true after starting controller")
 		}
@@ -112,7 +113,7 @@ func TestControllerStart(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.description, func(t *testing.T) {
-			controller, _ := NewController(fake.NewSimpleClientset(), nil)
+			controller, _ := NewController(fake.NewSimpleClientset(), nil, nil)
 			controller.waitQueue = newQueue(limitlessTracker{})
 
 			if tc.mockNL != nil {
@@ -121,7 +122,7 @@ func TestControllerStart(t *testing.T) {
 
 			if tc.mockPW != nil {
 				controller.pw = tc.mockPW
-				controller.watcher = NewWatcher(tc.mockPW)
+				controller.watcher = NewWatcher(tc.mockPW, nil)
 			}
 
 			err := controller.Start()
@@ -170,7 +171,7 @@ func TestControllerStop(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.description, func(t *testing.T) {
-			controller, _ := NewController(fake.NewSimpleClientset(), nil)
+			controller, _ := NewController(fake.NewSimpleClientset(), nil, nil)
 			controller.running = true
 			controller.waitQueue = newQueue(limitlessTracker{})
 
@@ -196,7 +197,11 @@ func TestControllerStop(t *testing.T) {
 
 			go controller.loop()
 			time.Sleep(timeout)
-			err := controller.Stop(tc.stopTimeout)
+
+			ctx, cancel := context.WithTimeout(context.Background(), tc.stopTimeout)
+			defer cancel()
+
+			err := controller.Stop(ctx)
 			if tc.shouldError && err == nil {
 				t.Errorf("executors unexpectedly finished before timeout")
 			} else if !tc.shouldError && err != nil {
