@@ -71,7 +71,19 @@ func TestKubeExecutorProvision(t *testing.T) {
 				{
 					component: types.ServerComponent,
 					sleep:     10 * time.Second * timeMultiplier,
-					health:    Failed,
+					health:    Succeeded,
+					podIP:     "127.0.0.1",
+				},
+				{
+					component: types.ClientComponent,
+					sleep:     10 * time.Second * timeMultiplier,
+					health:    Succeeded,
+					podIP:     "127.0.0.1",
+				},
+				{
+					component: types.DriverComponent,
+					sleep:     10 * time.Second * timeMultiplier,
+					health:    Succeeded,
 					podIP:     "127.0.0.1",
 				},
 			},
