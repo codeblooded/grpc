@@ -65,6 +65,7 @@ func setupDevEnv(grpcServer *grpc.Server) *kubernetes.Clientset {
 
 func main() {
 	port := flag.Int("port", 50051, "Port to start the service.")
+	testTimeout := flag.Duration("testTimeout", 15*time.Minute, "Maximum time tests are allowed to run")
 	shutdownTimeout := flag.Duration("shutdownTimeout", 5*time.Minute, "Time alloted to a graceful shutdown.")
 	flag.Parse()
 	defer glog.Flush()
@@ -83,7 +84,9 @@ func main() {
 
 	storageServer := store.NewStorageServer()
 
-	controllerOpts := &orch.ControllerOptions{}
+	controllerOpts := &orch.ControllerOptions{
+		TestTimeout: *testTimeout,
+	}
 	controller, err := orch.NewController(clientset, storageServer, controllerOpts)
 	if err != nil {
 		glog.Fatalf("could not create a controller: %v", err)
