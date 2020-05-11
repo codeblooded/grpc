@@ -79,8 +79,8 @@ type ControllerOptions struct {
 // to a user.
 //
 // The options value allows the controller to be customized. Specifying nil will
-// configure the controller to sane defaults described in the ControllerOptions
-// documentation.
+// configure the controller to sane defaults. These defaults are described in
+// the ControllerOptions documentation.
 func NewController(clientset kubernetes.Interface, store store.Store, options *ControllerOptions) (*Controller, error) {
 	if clientset == nil {
 		return nil, errors.New("cannot create controller from nil kubernetes clientset")
