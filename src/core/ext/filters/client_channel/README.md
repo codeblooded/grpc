@@ -1,5 +1,4 @@
-Client Configuration Support for GRPC
-=====================================
+# Client Configuration Support for GRPC
 
 This library provides high level configuration machinery to construct client
 channels and load balance between them.
@@ -17,9 +16,7 @@ the channel. We represent arguments as a stream so that they can be changed
 by the resolver during execution, by reacting to external events (such as
 new service configuration data being pushed to some store).
 
-
-Load Balancing
---------------
+## Load Balancing
 
 Load balancing configuration is provided by a `LoadBalancingPolicy` object.
 
@@ -27,9 +24,7 @@ The primary job of the load balancing policies is to pick a target server
 given only the initial metadata for a request. It does this by providing
 a `ConnectedSubchannel` object to the owning channel.
 
-
-Sub-Channels
-------------
+## Sub-Channels
 
 A sub-channel provides a connection to a server for a client channel. It has a
 connectivity state like a regular channel, and so can be connected or
@@ -42,8 +37,6 @@ construction. To customize this behavior, transports build
 `ClientChannelFactory` objects, which customize construction arguments for
 concrete subchannel instances.
 
-
-Naming for GRPC
-===============
+# Naming for GRPC
 
 See [/doc/naming.md](gRPC name resolution).

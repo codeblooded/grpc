@@ -13,6 +13,7 @@ recommended to turn on for production services. See [Channelz design
 doc](https://github.com/grpc/proposal/blob/master/A14-channelz.md).
 
 ## How to enable tracing log
+
 The tracing log generation might have larger overhead, especially when you try
 to trace transport. It would result in replicating the traffic loads. However,
 it is still the most powerful tool when you need to dive in.

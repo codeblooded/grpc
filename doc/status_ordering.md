@@ -1,7 +1,7 @@
-Ordering Status and Reads in the gRPC API
------------------------------------------
+## Ordering Status and Reads in the gRPC API
 
 Rules for implementors:
+
 1. Reads and Writes Must not succeed after Status has been delivered.
 2. Status is only delivered after all buffered messages are read.
 3. Reads May continue to succeed after a failing write.

@@ -1,7 +1,7 @@
 ## gRPC Compression
 
 The keywords "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
-"SHOULD NOT", "RECOMMENDED",  "MAY", and "OPTIONAL" in this document are to be
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
 interpreted as described in [RFC 2119](http://www.ietf.org/rfc/rfc2119.txt).
 
 ### Intent
@@ -26,13 +26,13 @@ Compression MAY be configured by the Client Application by calling the
 appropriate API method. There are two scenarios where compression MAY be
 configured:
 
-+  At channel creation time, which sets the channel default compression and
-   therefore the compression that SHALL be used in the absence of per-RPC
-   compression configuration.
-+  At response time, via:
-   +  For unary RPCs, the {Client,Server}Context instance.
-   +  For streaming RPCs, the {Client,Server}Writer instance. In this case,
-      configuration is reduced to disabling compression altogether.
+- At channel creation time, which sets the channel default compression and
+  therefore the compression that SHALL be used in the absence of per-RPC
+  compression configuration.
+- At response time, via:
+  - For unary RPCs, the {Client,Server}Context instance.
+  - For streaming RPCs, the {Client,Server}Writer instance. In this case,
+    configuration is reduced to disabling compression altogether.
 
 ### Compression Method Asymmetry Between Peers
 
@@ -93,26 +93,26 @@ configuration will be used.
 ### Test cases
 
 1. When a compression level is not specified for either the channel or the
-message, the default channel level _none_ is considered: data MUST NOT be
-compressed.
+   message, the default channel level _none_ is considered: data MUST NOT be
+   compressed.
 1. When per-RPC compression configuration isn't present for a message, the
-channel compression configuration MUST be used.
+   channel compression configuration MUST be used.
 1. When a compression method (including no compression) is specified for an
-outgoing message, the message MUST be compressed accordingly.
+   outgoing message, the message MUST be compressed accordingly.
 1. A message compressed by a client in a way not supported by its server MUST
-fail with status `UNIMPLEMENTED`, its associated description indicating the
-unsupported condition as well as the supported ones. The returned
-`grpc-accept-encoding` header MUST NOT contain the compression method
-(encoding) used.
+   fail with status `UNIMPLEMENTED`, its associated description indicating the
+   unsupported condition as well as the supported ones. The returned
+   `grpc-accept-encoding` header MUST NOT contain the compression method
+   (encoding) used.
 1. A message compressed by a server in a way not supported by its client MUST
-fail with status `INTERNAL`, its associated description indicating the
-unsupported condition as well as the supported ones. The returned
-`grpc-accept-encoding` header MUST NOT contain the compression method
-(encoding) used.
+   fail with status `INTERNAL`, its associated description indicating the
+   unsupported condition as well as the supported ones. The returned
+   `grpc-accept-encoding` header MUST NOT contain the compression method
+   (encoding) used.
 1. An ill-constructed message with its [Compressed-Flag
-bit](PROTOCOL-HTTP2.md#compressed-flag)
-set but lacking a
-[grpc-encoding](PROTOCOL-HTTP2.md#message-encoding)
-entry different from _identity_ in its metadata MUST fail with `INTERNAL`
-status, its associated description indicating the invalid Compressed-Flag
-condition.
+   bit](PROTOCOL-HTTP2.md#compressed-flag)
+   set but lacking a
+   [grpc-encoding](PROTOCOL-HTTP2.md#message-encoding)
+   entry different from _identity_ in its metadata MUST fail with `INTERNAL`
+   status, its associated description indicating the invalid Compressed-Flag
+   condition.

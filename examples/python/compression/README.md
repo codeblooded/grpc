@@ -3,9 +3,9 @@
 gRPC offers lossless compression options in order to decrease the number of bits
 transferred over the wire. Three levels of compression are available:
 
- - `grpc.Compression.NoCompression` - No compression is applied to the payload. (default)
- - `grpc.Compression.Deflate` - The "Deflate" algorithm is applied to the payload.
- - `grpc.Compression.Gzip` - The Gzip algorithm is applied to the payload.
+- `grpc.Compression.NoCompression` - No compression is applied to the payload. (default)
+- `grpc.Compression.Deflate` - The "Deflate" algorithm is applied to the payload.
+- `grpc.Compression.Gzip` - The Gzip algorithm is applied to the payload.
 
 The default option on both clients and servers is `grpc.Compression.NoCompression`.
 
@@ -33,7 +33,6 @@ stub = helloworld_pb2_grpc.GreeterStub(channel)
 response = stub.SayHello(helloworld_pb2.HelloRequest(name='you'),
                          compression=grpc.Compression.Deflate)
 ```
-
 
 ### Server Side Compression
 

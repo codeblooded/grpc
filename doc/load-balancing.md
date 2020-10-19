@@ -1,5 +1,4 @@
-Load Balancing in gRPC
-======================
+# Load Balancing in gRPC
 
 # Scope
 
@@ -10,7 +9,7 @@ This document explains the design for load balancing within gRPC.
 ## Per-Call Load Balancing
 
 It is worth noting that load-balancing within gRPC happens on a per-call
-basis, not a per-connection basis.  In other words, even if all requests
+basis, not a per-connection basis. In other words, even if all requests
 come from a single client, we still want them to be load-balanced across
 all servers.
 
@@ -68,7 +67,7 @@ servers to collect load and health information.
 
 The gRPC client load balancing code must be simple and portable. The
 client should only contain simple algorithms (e.g., Round Robin) for
-server selection.  For complex algorithms, the client should rely on
+server selection. For complex algorithms, the client should rely on
 a load balancer to provide load balancing configuration and the list of
 servers to which the client should send requests. The balancer will update
 the server list as needed to balance the load as well as handle server
@@ -95,19 +94,19 @@ with an up-to-date list of servers.
 The gRPC client does support an API for built-in load balancing policies.
 However, there are only a small number of these (one of which is the
 `grpclb` policy, which implements external load balancing), and users
-are discouraged from trying to extend gRPC by adding more.  Instead, new
+are discouraged from trying to extend gRPC by adding more. Instead, new
 load balancing policies should be implemented in external load balancers.
 
 ## Workflow
 
 Load-balancing policies fit into the gRPC client workflow in between
-name resolution and the connection to the server.  Here's how it all
+name resolution and the connection to the server. Here's how it all
 works:
 
 ![image](images/load-balancing.png)
 
 1. On startup, the gRPC client issues a [name resolution](naming.md) request
-   for the server name.  The name will resolve to one or more IP addresses,
+   for the server name. The name will resolve to one or more IP addresses,
    each of which will indicate whether it is a server address or
    a load balancer address, and a [service config](service_config.md)
    that indicates which client-side load-balancing policy to use (e.g.,
@@ -117,11 +116,11 @@ works:
      address, then the client will use the `grpclb` policy, regardless
      of what load-balancing policy was requested by the service config.
      Otherwise, the client will use the load-balancing policy requested
-     by the service config.  If no load-balancing policy is requested
+     by the service config. If no load-balancing policy is requested
      by the service config, then the client will default to a policy
      that picks the first available server address.
 3. The load balancing policy creates a subchannel to each server address.
-   - For all policies *except* `grpclb`, this means one subchannel for each
+   - For all policies _except_ `grpclb`, this means one subchannel for each
      address returned by the resolver. Note that these policies
      ignore any balancer addresses returned by the resolver.
    - In the case of the `grpclb` policy, the workflow is as follows:
@@ -142,5 +141,5 @@ works:
    subchannel (i.e., which server) the RPC should be sent to.
    - In the case of the `grpclb` policy, the client will send requests
      to the servers in the order in which they were returned by the load
-     balancer.  If the server list is empty, the call will block until a
+     balancer. If the server list is empty, the call will block until a
      non-empty one is received.

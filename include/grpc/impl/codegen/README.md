@@ -13,7 +13,7 @@ targets excessively large (particularly when they are not even C++ specific).
 
 ## What should user code do?
 
-User code should *not* include anything from this directory. Only generated code
+User code should _not_ include anything from this directory. Only generated code
 and gRPC library code should include contents from this directory. C++ user code
 should instead include contents from the main `grpcpp` directory or its
 accessible subcomponents like `grpcpp/support`. It is possible that we may

@@ -13,6 +13,7 @@ Nuget package into your project.
 Note that with C# you need to manually register the service
 descriptors with the reflection service implementation when creating a server
 (this isn't necessary with e.g. C++ or Java)
+
 ```csharp
 // the reflection service will be aware of "Greeter" and "ServerReflection" services.
 var reflectionServiceImpl = new ReflectionServiceImpl(Greeter.Descriptor, ServerReflection.Descriptor);
@@ -33,19 +34,20 @@ After starting the server, you can verify that the server reflection
 is working properly by using the [`grpc_cli` command line
 tool](https://github.com/grpc/grpc/blob/master/doc/command_line_tool.md):
 
- ```sh
-  $ grpc_cli ls localhost:50051
-  ```
+```sh
+ $ grpc_cli ls localhost:50051
+```
 
-  output:
-  ```sh
-  helloworld.Greeter
-  grpc.reflection.v1alpha.ServerReflection
-  ```
+output:
 
-  For more examples and instructions how to use the `grpc_cli` tool,
-  please refer to the [`grpc_cli` documentation](../command_line_tool.md)
-  and the [C++ Server Reflection Tutorial](../server_reflection_tutorial.md).
+```sh
+helloworld.Greeter
+grpc.reflection.v1alpha.ServerReflection
+```
+
+For more examples and instructions how to use the `grpc_cli` tool,
+please refer to the [`grpc_cli` documentation](../command_line_tool.md)
+and the [C++ Server Reflection Tutorial](../server_reflection_tutorial.md).
 
 ## Additional Resources
 

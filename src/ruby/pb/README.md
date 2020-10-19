@@ -1,18 +1,15 @@
-Protocol Buffers
-================
+# Protocol Buffers
 
 This folder contains protocol buffers provided with gRPC ruby, and the generated
 code to them.
 
-PREREQUISITES
--------------
+## PREREQUISITES
 
 The code is generated using the protoc (> 3.0.0.alpha.1) and the
-grpc_ruby_plugin.  These must be installed to regenerate the IDL defined
+grpc_ruby_plugin. These must be installed to regenerate the IDL defined
 classes, but that's not necessary just to use them.
 
-health_check/v1
---------------------
+## health_check/v1
 
 This package defines the surface of a simple health check service that gRPC
 servers may choose to implement, and provides an implementation for it. To
@@ -26,8 +23,7 @@ $ protoc -I ../../proto ../../proto/grpc/health/v1/health.proto \
     --plugin=protoc-gen-grpc=`which grpc_ruby_plugin`
 ```
 
-test
-----
+## test
 
 This package defines the surface of the gRPC interop test service and client
 To re-generate the surface, it's necessary to have checked-out versions of

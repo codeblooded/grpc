@@ -15,21 +15,23 @@ Bazel is the primary build system used by the core gRPC development team. Bazel
 provides fast builds and it easily handles dependencies that support bazel.
 
 To add gRPC as a dependency in bazel:
+
 1. determine commit SHA for the grpc release you want to use
 2. Use the [http_archive](https://docs.bazel.build/versions/master/repo/http.html#http_archive) bazel rule to include gRPC source
-  ```
-  http_archive(
-      name = "com_github_grpc_grpc",
-      urls = [
-          "https://github.com/grpc/grpc/archive/YOUR_GRPC_COMMIT_SHA.tar.gz",
-      ],
-      strip_prefix = "grpc-YOUR_GRPC_COMMIT_SHA",
-  )
 
-  load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
+```
+http_archive(
+    name = "com_github_grpc_grpc",
+    urls = [
+        "https://github.com/grpc/grpc/archive/YOUR_GRPC_COMMIT_SHA.tar.gz",
+    ],
+    strip_prefix = "grpc-YOUR_GRPC_COMMIT_SHA",
+)
 
-  grpc_deps()
-  ```
+load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
+
+grpc_deps()
+```
 
 ## CMake
 
@@ -50,6 +52,7 @@ find_package(gRPC CONFIG REQUIRED)
 add_executable(my_exe my_exe.cc)
 target_link_libraries(my_exe gRPC::grpc++)
 ```
+
 [Full example](../../examples/cpp/helloworld/CMakeLists.txt)
 
 `find_package` can only find software that has already been installed on your
@@ -62,6 +65,7 @@ The following sections describe strategies to automatically build gRPC
 as part of your project.
 
 ### FetchContent
+
 If you are using CMake v3.11 or newer you should use CMake's
 [FetchContent module](https://cmake.org/cmake/help/latest/module/FetchContent.html).
 The first time you run CMake in a given build directory, FetchContent will
@@ -91,6 +95,7 @@ Note that you need to
 before building gRPC.
 
 ### git submodule
+
 If you cannot use FetchContent, another approach is to add the gRPC source tree
 to your project as a
 [git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
@@ -141,6 +146,7 @@ We do not officially support any packaging system for C++, but there are some co
 and are known to work well. More contributions and support for popular packaging systems are welcome!
 
 ### Install using vcpkg package
+
 gRPC is available using the [vcpkg](https://github.com/Microsoft/vcpkg) dependency manager:
 
 ```
@@ -156,7 +162,6 @@ vcpkg install grpc
 
 The gRPC port in vcpkg is kept up to date by Microsoft team members and community contributors. If the version is out of date, please [create an issue or pull request](https://github.com/Microsoft/vcpkg) on the vcpkg repository.
 
-
 ## Examples & Additional Documentation
 
 You can find out how to build and run our simplest gRPC C++ example in our
@@ -165,15 +170,14 @@ You can find out how to build and run our simplest gRPC C++ example in our
 For more detailed documentation on using gRPC in C++ , see our main
 documentation site at [grpc.io](https://grpc.io), specifically:
 
-* [Overview](https://grpc.io/docs): An introduction to gRPC with a simple
+- [Overview](https://grpc.io/docs): An introduction to gRPC with a simple
   Hello World example in all our supported languages, including C++.
-* [gRPC Basics - C++](https://grpc.io/docs/languages/cpp/basics):
+- [gRPC Basics - C++](https://grpc.io/docs/languages/cpp/basics):
   A tutorial that steps you through creating a simple gRPC C++ example
   application.
-* [Asynchronous Basics - C++](https://grpc.io/docs/languages/cpp/async):
+- [Asynchronous Basics - C++](https://grpc.io/docs/languages/cpp/async):
   A tutorial that shows you how to use gRPC C++'s asynchronous/non-blocking
   APIs.
-
 
 # To start developing gRPC C++
 

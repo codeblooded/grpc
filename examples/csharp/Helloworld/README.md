@@ -1,22 +1,19 @@
-gRPC in 3 minutes (C#)
-========================
+# gRPC in 3 minutes (C#)
 
-BACKGROUND
--------------
+## BACKGROUND
+
 This is a version of the helloworld example using the dotnet SDK
 tools to compile [helloworld.proto][] in a common library, build the server
 and the client, and run them.
 
-PREREQUISITES
--------------
+## PREREQUISITES
 
 - The [.NET Core SDK 2.1+](https://www.microsoft.com/net/core)
 
 You can also build the solution `Greeter.sln` using Visual Studio 2017,
 but it's not a requirement.
 
-BUILD AND RUN
--------------
+## BUILD AND RUN
 
 - Build and run the server
 
@@ -30,10 +27,9 @@ BUILD AND RUN
   > dotnet run -p GreeterClient
   ```
 
-Tutorial
---------
+## Tutorial
 
 You can find a more detailed tutorial about Grpc in [gRPC Basics: C#][]
 
-[helloworld.proto]:../../protos/helloworld.proto
-[gRPC Basics: C#]:https://grpc.io/docs/languages/csharp/basics
+[helloworld.proto]: ../../protos/helloworld.proto
+[grpc basics: c#]: https://grpc.io/docs/languages/csharp/basics

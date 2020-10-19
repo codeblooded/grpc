@@ -1,5 +1,4 @@
-Service Config in gRPC
-======================
+# Service Config in gRPC
 
 # Objective
 
@@ -16,13 +15,13 @@ introduced.
 
 # Architecture
 
-A service config is associated with a server name.  The [name
+A service config is associated with a server name. The [name
 resolver](naming.md) plugin, when asked to resolve a particular server
 name, will return both the resolved addresses and the service config.
 
 The name resolver returns the service config to the gRPC client in JSON form.
 Individual resolver implementations determine where and in what format the
-service config is stored.  If the resolver implemention obtains the
+service config is stored. If the resolver implemention obtains the
 service config in protobuf form, it must convert it to JSON using the
 normal [protobuf to JSON translation
 rules](https://developers.google.com/protocol-buffers/docs/proto3#json).
@@ -87,6 +86,6 @@ The service config is used in the following APIs:
   the service config associated with the channel (for debugging
   purposes).
 - In the gRPC client API, where users can set the service config
-  explicitly.  This can be used to set the config in unit tests.  It can
+  explicitly. This can be used to set the config in unit tests. It can
   also be used to set the default config that will be used if the
   resolver plugin does not return a service config.

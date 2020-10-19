@@ -1,13 +1,13 @@
 # gRPC C++ Load Balancing Tutorial
 
 ### Prerequisite
+
 Make sure you have run the [hello world example](../helloworld) or understood the basics of gRPC. We will not dive into the details that have been discussed in the hello world example.
 
 ### Get the tutorial source code
 
-The example code for this and our other examples lives in the `examples` directory. Clone this repository 
+The example code for this and our other examples lives in the `examples` directory. Clone this repository
 at the [latest stable release tag](https://github.com/grpc/grpc/releases) to your local machine by running the following command:
-
 
 ```sh
 $ git clone -b RELEASE_TAG_HERE https://github.com/grpc/grpc
@@ -26,6 +26,7 @@ To generate the client and server side interfaces:
 ```sh
 $ make helloworld.grpc.pb.cc helloworld.pb.cc
 ```
+
 Which internally invokes the proto-compiler as:
 
 ```sh

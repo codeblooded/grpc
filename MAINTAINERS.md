@@ -8,6 +8,7 @@ See [CONTRIBUTING.md](https://github.com/grpc/grpc-community/blob/master/CONTRIB
 for general contribution guidelines.
 
 ## Maintainers (in alphabetical order)
+
 - [a11r](https://github.com/a11r), Google LLC
 - [apolcyn](https://github.com/apolcyn), Google LLC
 - [arjunroy](https://github.com/arjunroy), Google LLC
@@ -60,8 +61,8 @@ for general contribution guidelines.
 - [ZhenLian](https://github.com/ZhenLian), Google LLC
 - [ZhouyihaiDing](https://github.com/ZhouyihaiDing), Google LLC
 
-
 ## Emeritus Maintainers (in alphabetical order)
+
 - [adelez](https://github.com/adelez), Google LLC
 - [billfeng327](https://github.com/billfeng327), Google LLC
 - [ctiller](https://github.com/ctiller), Google LLC

@@ -1,5 +1,4 @@
-Protocol Buffers/gRPC Integration Into .NET Build
-=================================================
+# Protocol Buffers/gRPC Integration Into .NET Build
 
 With Grpc.Tools package version 1.17 we made it easier to compile .proto files
 in your project using the `dotnet build` command, Visual Studio, or command-line
@@ -12,8 +11,7 @@ not the long-term solution.
 
 There is also a Reference section at the end of the file.
 
-Reporting issues
-----------------
+## Reporting issues
 
 First thing first, if you found a bug in this new build system, or have a
 scenario that is not easily covered, please open an [issue in the gRPC
@@ -21,14 +19,13 @@ repository](https://github.com/grpc/grpc/issues), and **tag the user @kkm000**
 somewhere in the text (for example, include `/cc @kkm000` at end of the issue
 text) to seize his immediate attention.
 
-Common scenarios
-----------------
+## Common scenarios
 
 ### I just want to compile .proto files into my library
 
 This is the approach taken by the examples in the `csharp/examples` directory.
 Protoc output files (for example, `Helloworld.cs` and `HelloworldGrpc.cs`
-compiled from `helloworld.proto`) are placed among *object* and other temporary
+compiled from `helloworld.proto`) are placed among _object_ and other temporary
 files of your project, and automatically provided as inputs to the C# compiler.
 As with other automatically generated .cs files, they are included in the source
 and symbols NuGet package, if you build one.
@@ -46,19 +43,19 @@ example will add all .proto files in a project and all its subdirectories
 You must add a reference to the NuGet packages Grpc.Tools and Grpc (the latter
 is a meta-package, in turn referencing Grpc.Core and Google.Protobuf packages).
 It is **very important** to mark Grpc.Tools as a development-only dependency, so
-that the *users* of your library do not fetch the tools package:
+that the _users_ of your library do not fetch the tools package:
 
-* "Classic" .csproj with `packages.config` (Visual Studio, Mono): This is
- handled automatically by NuGet. See the attribute added by Visual Studio to the
- [packages.config](../../examples/csharp/HelloworldLegacyCsproj/Greeter/packages.config#L6)
- file in the HelloworldLegacyCsproj/Greeter example.
+-   "Classic" .csproj with `packages.config` (Visual Studio, Mono): This is
+    handled automatically by NuGet. See the attribute added by Visual Studio to the
+    [packages.config](../../examples/csharp/HelloworldLegacyCsproj/Greeter/packages.config#L6)
+    file in the HelloworldLegacyCsproj/Greeter example.
 
-* "SDK" .csproj (Visual Studio, `dotnet new`): Add an attribute
- `PrivateAssets="All"` to the Grpc.Tools package reference. See an example in the
- [Greeter.csproj](../../examples/csharp/Helloworld/Greeter/Greeter.csproj#L10)
- example project in this repository. If adding a package reference in Visual
- Studio, edit the project file and add this attribute. [This is a bug in NuGet
- client](https://github.com/NuGet/Home/issues/4125).
+-   "SDK" .csproj (Visual Studio, `dotnet new`): Add an attribute
+    `PrivateAssets="All"` to the Grpc.Tools package reference. See an example in the
+    [Greeter.csproj](../../examples/csharp/Helloworld/Greeter/Greeter.csproj#L10)
+    example project in this repository. If adding a package reference in Visual
+    Studio, edit the project file and add this attribute. [This is a bug in NuGet
+    client](https://github.com/NuGet/Home/issues/4125).
 
 If building a NuGet package from your library with the nuget command line tool
 from a .nuspec file, then the spec file may (and probably should) reference the
@@ -155,7 +152,7 @@ recompile them.
 #### I am getting a warning about a missing expected file!
 
 When we are preparing compile, there is no way to know whether a given proto
-file will produce a *Grpc.cs output or not. If the proto file has a `service`
+file will produce a \*Grpc.cs output or not. If the proto file has a `service`
 clause, it will; otherwise, it won't, but the build script cannot know that in
 advance. When we are treating generated .cs files as temporary, this is ok, but
 when generating them for you, creating empty files is probably not. You need to
@@ -198,7 +195,7 @@ In this sample, all .proto files are compiled with `GrpcServices="None"`, except
 for .proto files in subdirectories on any tree level named `hello/` and `bye`,
 which will take `GrpcServices="Both"` Note the use of the `Update` attribute
 instead of `Include`. If you write `Include` by mistake, the files will be added
-to compile *twice*, once with, and once without GrpcServices. Pay attention not
+to compile _twice_, once with, and once without GrpcServices. Pay attention not
 to do that!
 
 Another example would be the use of globbing if your service .proto files are
@@ -252,7 +249,7 @@ Pay attention to the `ProtoRoot` property. It needs to be set to the directory
 where `import` declarations in the .proto files are looking for files, since the
 project root is no longer the same as the proto root.
 
-Alternatively, you may place the project in a directory *above* your proto root,
+Alternatively, you may place the project in a directory _above_ your proto root,
 and refer to the files with a subdirectory name:
 
 ```xml
@@ -263,6 +260,7 @@ and refer to the files with a subdirectory name:
 ```
 
 ### Alas, this all is nice, but my scenario is more complex, -OR-
+
 ### I'll investigate that when I have time. I just want to run protoc as I did before.
 
 One option is examine our [.targets and .props files](Grpc.Tools/build/) and see
@@ -279,16 +277,16 @@ version of the Tools package will point to the correct location of the files,
 and resolve the compiler and plugin executables appropriate for the host system.
 These property variables are:
 
-* `Protobuf_ProtocFullPath` points to the full path and filename of protoc executable, e. g.,
-  "C:\Users\kkm\.nuget\packages\grpc.tools\1.17.0\build\native\bin\windows\protoc.exe".
+-   `Protobuf_ProtocFullPath` points to the full path and filename of protoc executable, e. g.,
+    "C:\Users\kkm\.nuget\packages\grpc.tools\1.17.0\build\native\bin\windows\protoc.exe".
 
-* `gRPC_PluginFullPath` points to the full path and filename of gRPC plugin, such as
-  "C:\Users\kkm\.nuget\packages\grpc.tools\1.17.0\build\native\bin\windows\grpc_csharp_plugin.exe"
+-   `gRPC_PluginFullPath` points to the full path and filename of gRPC plugin, such as
+    "C:\Users\kkm\.nuget\packages\grpc.tools\1.17.0\build\native\bin\windows\grpc_csharp_plugin.exe"
 
-* `Protobuf_StandardImportsPath` points to the standard proto import directory, for example,
-  "C:\Users\kkm\.nuget\packages\grpc.tools\1.17.0\build\native\include". This is
-  the directory where a declaration such as `import "google/protobuf/wrappers.proto";`
-  in a proto file would find its target.
+-   `Protobuf_StandardImportsPath` points to the standard proto import directory, for example,
+    "C:\Users\kkm\.nuget\packages\grpc.tools\1.17.0\build\native\include". This is
+    the directory where a declaration such as `import "google/protobuf/wrappers.proto";`
+    in a proto file would find its target.
 
 Use MSBuild property expansion syntax `$(VariableName)` in your protoc command
 line to substitute these variables, for instance,
@@ -303,7 +301,7 @@ line to substitute these variables, for instance,
   </Target>
 ```
 
-Also make sure *not* to include any file names to the `Protobuf` item
+Also make sure _not_ to include any file names to the `Protobuf` item
 collection, otherwise they will be compiled by default. If, by any chance, you
 used that name for your build scripting, you must rename it.
 
@@ -314,15 +312,14 @@ the protoc binary, C++ gRPC plugin and the standard imports, but nothing else.
 Do not use the `Protobuf` item collection name so that your project remains
 future-proof. We'll use it for C++ projects too.
 
-Reference
----------
+## Reference
 
 ### Protobuf item metadata reference
 
 The following metadata are recognized on the `<Protobuf>` items.
 
 | Name           | Default   | Value                | Synopsis                         |
-|----------------|-----------|----------------------|----------------------------------|
+| -------------- | --------- | -------------------- | -------------------------------- |
 | Access         | `public`  | `public`, `internal` | Generated class access           |
 | ProtoCompile   | `true`    | `true`, `false`      | Pass files to protoc?            |
 | ProtoRoot      | See notes | A directory          | Common root for set of files     |
@@ -332,45 +329,45 @@ The following metadata are recognized on the `<Protobuf>` items.
 | GrpcServices   | `both`    | `none`, `client`,    | Generated gRPC stubs             |
 |                |           | `server`, `both`     |                                  |
 
-__Notes__
+**Notes**
 
-* __ProtoRoot__  
-For files _inside_ the project cone, `ProtoRoot` is set by default to the
-project directory. For every file _outside_ of the project directory, the value
-is set to this file's containing directory name, individually per file. If you
-include a subtree of proto files that lies outside of the project directory, you
-need to set this metadatum. There is an example in this file above. The path in
-this variable is relative to the project directory.
+-   **ProtoRoot**  
+    For files _inside_ the project cone, `ProtoRoot` is set by default to the
+    project directory. For every file _outside_ of the project directory, the value
+    is set to this file's containing directory name, individually per file. If you
+    include a subtree of proto files that lies outside of the project directory, you
+    need to set this metadatum. There is an example in this file above. The path in
+    this variable is relative to the project directory.
 
-* __OutputDir__  
-The default value for this metadatum is the value of the property
-`Protobuf_OutputPath`. This property, in turn, unless you set it in your
-project, will be set to the value of the standard MSBuild property
-`IntermediateOutputPath`, which points to the location of compilation object
-outputs, such as "obj/Release/netstandard1.5/". The path in this property is
-considered relative to the project directory.
+-   **OutputDir**  
+    The default value for this metadatum is the value of the property
+    `Protobuf_OutputPath`. This property, in turn, unless you set it in your
+    project, will be set to the value of the standard MSBuild property
+    `IntermediateOutputPath`, which points to the location of compilation object
+    outputs, such as "obj/Release/netstandard1.5/". The path in this property is
+    considered relative to the project directory.
 
-* __GrpcOutputDir__  
-Unless explicitly set, will follow `OutputDir` for any given file.
+-   **GrpcOutputDir**  
+    Unless explicitly set, will follow `OutputDir` for any given file.
 
-* __Access__  
-Sets generated class access on _both_ generated message and gRPC stub classes.
+-   **Access**  
+    Sets generated class access on _both_ generated message and gRPC stub classes.
 
-`grpc_csharp_plugin` command line options
----------
+## `grpc_csharp_plugin` command line options
 
 Under the hood, the `Grpc.Tools` build integration invokes the `protoc` and `grpc_csharp_plugin` binaries
 to perform code generation. Here is an overview of the available `grpc_csharp_plugin` options:
 
-| Name            | Default   | Synopsis                                                 |
-|---------------- |-----------|----------------------------------------------------------|
-| no_client       | off       | Don't generate the client stub                           |
-| no_server       | off       | Don't generate the server-side stub                      |
-| internal_access | off       | Generate classes with "internal" visibility              |
-| lite_client     | off       | Generate client stubs that inherit from "LiteClientBase" |
+| Name            | Default | Synopsis                                                 |
+| --------------- | ------- | -------------------------------------------------------- |
+| no_client       | off     | Don't generate the client stub                           |
+| no_server       | off     | Don't generate the server-side stub                      |
+| internal_access | off     | Generate classes with "internal" visibility              |
+| lite_client     | off     | Generate client stubs that inherit from "LiteClientBase" |
 
 Note that the protocol buffer compiler has a special commandline syntax for plugin options.
 Example:
+
 ```
 protoc --plugin=protoc-gen-grpc=grpc_csharp_plugin --csharp_out=OUT_DIR \
     --grpc_out=OUT_DIR --grpc_opt=lite_client,no_server \

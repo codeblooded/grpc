@@ -1,5 +1,4 @@
-gRPC Hostname Example
-=====================
+# gRPC Hostname Example
 
 The hostname example is a Hello World server whose response includes its
 hostname. It also supports health and reflection services. This makes it a good

@@ -1,17 +1,15 @@
-gRPC in 3 minutes (Ruby)
-========================
+# gRPC in 3 minutes (Ruby)
 
-BACKGROUND
--------------
+## BACKGROUND
+
 For this sample, we've already generated the server and client stubs from [helloworld.proto][]
 
-PREREQUISITES
--------------
+## PREREQUISITES
 
 - Ruby 2.x
-This requires Ruby 2.x, as the gRPC API surface uses keyword args.
-If you don't have that installed locally, you can use [RVM][] to use Ruby 2.x for testing without upgrading the version of Ruby on your whole system.
-RVM is also useful if you don't have the necessary privileges to update your system's Ruby.
+  This requires Ruby 2.x, as the gRPC API surface uses keyword args.
+  If you don't have that installed locally, you can use [RVM][] to use Ruby 2.x for testing without upgrading the version of Ruby on your whole system.
+  RVM is also useful if you don't have the necessary privileges to update your system's Ruby.
 
   ```sh
   $ # RVM installation as specified at https://rvm.io/rvm/install
@@ -21,10 +19,11 @@ RVM is also useful if you don't have the necessary privileges to update your sys
   $ # follow the instructions to ensure that your're using the latest stable version of Ruby
   $ # and that the rvm command is installed
   ```
-- *N.B* Make sure your run `source $HOME/.rvm/scripts/rvm` as instructed to complete the set-up of RVM.
 
-INSTALL
--------
+- _N.B_ Make sure your run `source $HOME/.rvm/scripts/rvm` as instructed to complete the set-up of RVM.
+
+## INSTALL
+
 - [Install gRPC Ruby][]
 
 - Use bundler to install the example package's dependencies
@@ -35,8 +34,7 @@ INSTALL
   $ bundle install
   ```
 
-Try it!
--------
+## Try it!
 
 - Run the server
 
@@ -52,12 +50,11 @@ Try it!
   $ bundle exec ./greeter_client.rb
   ```
 
-Tutorial
---------
+## Tutorial
 
 You can find a more detailed tutorial in [gRPC Basics: Ruby][]
 
-[helloworld.proto]:../protos/helloworld.proto
-[RVM]:https://www.rvm.io/
-[Install gRPC ruby]:../../src/ruby#installation
-[gRPC Basics: Ruby]:https://grpc.io/docs/languages/ruby/basics
+[helloworld.proto]: ../protos/helloworld.proto
+[rvm]: https://www.rvm.io/
+[install grpc ruby]: ../../src/ruby#installation
+[grpc basics: ruby]: https://grpc.io/docs/languages/ruby/basics

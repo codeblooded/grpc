@@ -1,5 +1,4 @@
-The bm_diff Family
-====
+# The bm_diff Family
 
 This family of python scripts can be incredibly useful for fast iteration over
 different performance tweaks. The tools allow you to save performance data from
@@ -7,7 +6,7 @@ a baseline commit, then quickly compare data from your working branch to that
 baseline data to see if you have made any performance wins.
 
 The tools operate with three concrete steps, which can be invoked separately,
-or all together via the driver script, bm_main.py. This readme will describe 
+or all together via the driver script, bm_main.py. This readme will describe
 the typical workflow for these scripts, then it will include sections on the
 details of every script for advanced usage.
 
@@ -19,14 +18,14 @@ made some significant changes and want to see some data. From your branch, run
 
 `tools/profiling/microbenchmarks/bm_diff/bm_main.py -b bm_error -l 5 -d master`
 
-This will build the `bm_error` binary on your branch, and then it will checkout 
-master and build it there too. It will then run these benchmarks 5 times each. 
-Lastly it will compute the statistically significant performance differences 
-between the two branches. This should show the nice performance wins your 
+This will build the `bm_error` binary on your branch, and then it will checkout
+master and build it there too. It will then run these benchmarks 5 times each.
+Lastly it will compute the statistically significant performance differences
+between the two branches. This should show the nice performance wins your
 changes have made.
 
-If you have already invoked bm_main with `-d master`, you should instead use 
-`-o` for subsequent runs. This allows the script to skip re-building and 
+If you have already invoked bm_main with `-d master`, you should instead use
+`-o` for subsequent runs. This allows the script to skip re-building and
 re-running the unchanged master branch. For example:
 
 `tools/profiling/microbenchmarks/bm_diff/bm_main.py -b bm_error -l 5 -o`
@@ -51,12 +50,12 @@ will be used. The `opt` is used to get cpu_time and real_time, and the
 `counters` build is used to track other metrics like allocs, atomic adds,
 etc etc etc.
 
-For example, if you were to invoke (we assume everything is run from the 
+For example, if you were to invoke (we assume everything is run from the
 root of the repo):
 
 `tools/profiling/microbenchmarks/bm_diff/bm_build.py -b bm_error -n baseline`
 
-then the microbenchmark binaries will show up under 
+then the microbenchmark binaries will show up under
 `bm_diff_baseline/{opt,counters}/bm_error`
 
 ## bm_run.py
@@ -92,10 +91,11 @@ This would output the percent difference between your branch and master.
 This is the driver script. It uses the previous three modules and does
 everything for you. You pass in the benchmarks to be run, the number of loops,
 number of CPUs to use, and the commit to compare to. Then the script will:
-* Build the benchmarks at head, then checkout the branch to compare to and
+
+- Build the benchmarks at head, then checkout the branch to compare to and
   build the benchmarks there
-* Run both sets of microbenchmarks
-* Run bm_diff.py to compare the two, outputs the difference.
+- Run both sets of microbenchmarks
+- Run bm_diff.py to compare the two, outputs the difference.
 
 For example, one might run:
 
@@ -113,4 +113,3 @@ already been built and run. In that case use the --old flag to pass in the name
 of the baseline. This will only build and run the current branch. For example:
 
 `tools/profiling/microbenchmarks/bm_diff/bm_main.py -b bm_error -l 5 -o old`
-

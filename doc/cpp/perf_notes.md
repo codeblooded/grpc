@@ -10,11 +10,12 @@ If message k+1 in a stream does not rely on responses from message k, it's
 possible to enable write batching by passing a WriteOptions argument to Write
 with the buffer_hint set:
 
-~~~{.cpp}
+```{.cpp}
 stream_writer->Write(message, WriteOptions().set_buffer_hint());
-~~~
+```
 
 The write will be buffered until one of the following is true:
+
 - the per-stream buffer is filled (controllable with the channel argument
   GRPC_ARG_HTTP2_WRITE_BUFFER_SIZE) - this prevents infinite buffering leading
   to OOM

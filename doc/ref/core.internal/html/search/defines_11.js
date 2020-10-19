@@ -1,0 +1,25 @@
+var searchData=
+[
+  ['secure_5fendpoint_5fref_31255',['SECURE_ENDPOINT_REF',['../secure__endpoint_8cc.html#a44a94737ab965459ecc1564cb99b4520',1,'secure_endpoint.cc']]],
+  ['secure_5fendpoint_5funref_31256',['SECURE_ENDPOINT_UNREF',['../secure__endpoint_8cc.html#a83beb833980e5c04da05fbc4e84b2304',1,'secure_endpoint.cc']]],
+  ['shard_5fcount_31257',['SHARD_COUNT',['../slice__intern_8cc.html#a786b05947c7306d33ba96d8028803fcf',1,'SHARD_COUNT():&#160;slice_intern.cc'],['../metadata_8cc.html#a786b05947c7306d33ba96d8028803fcf',1,'SHARD_COUNT():&#160;metadata.cc']]],
+  ['shard_5fidx_31258',['SHARD_IDX',['../slice__intern_8cc.html#a92156a1530253699d3161dd827475741',1,'SHARD_IDX():&#160;slice_intern.cc'],['../metadata_8cc.html#a92156a1530253699d3161dd827475741',1,'SHARD_IDX():&#160;metadata.cc']]],
+  ['shrink_5ffullness_5ffactor_31259',['SHRINK_FULLNESS_FACTOR',['../timer__heap_8cc.html#ac5064e56882ef0a36524cae10ac800ce',1,'timer_heap.cc']]],
+  ['shrink_5fmin_5felems_31260',['SHRINK_MIN_ELEMS',['../timer__heap_8cc.html#acea3d7e412eaa9246638bc218372f55e',1,'timer_heap.cc']]],
+  ['slots_5fper_5fint_31261',['SLOTS_PER_INT',['../error_8cc.html#af7ba7a131017c75c174d17ce7cc8f2a3',1,'error.cc']]],
+  ['slots_5fper_5flinked_5ferror_31262',['SLOTS_PER_LINKED_ERROR',['../error_8cc.html#aa4ebce2eaa0fc5c04f106151b05eb821',1,'error.cc']]],
+  ['slots_5fper_5fstr_31263',['SLOTS_PER_STR',['../error_8cc.html#a87ac5c0f2bebd78c53e7fdb8554650f7',1,'error.cc']]],
+  ['slots_5fper_5ftime_31264',['SLOTS_PER_TIME',['../error_8cc.html#a1c45c617c6068cd99aecc58477cb504d',1,'error.cc']]],
+  ['so_5frxq_5fovfl_31265',['SO_RXQ_OVFL',['../udp__server_8cc.html#acb93bba017bb5841c9bd317fc4df4a78',1,'udp_server.cc']]],
+  ['staging_5fbuffer_5fsize_31266',['STAGING_BUFFER_SIZE',['../secure__endpoint_8cc.html#a323532623f3183502482bb853c503353',1,'secure_endpoint.cc']]],
+  ['state_5felem_5fcount_5flow_5fbit_31267',['STATE_ELEM_COUNT_LOW_BIT',['../combiner_8cc.html#ae8630fd93dd699cf1bef65d1eededdde',1,'combiner.cc']]],
+  ['state_5funorphaned_31268',['STATE_UNORPHANED',['../combiner_8cc.html#a07cc4d130031349125dec8a10b664653',1,'combiner.cc']]],
+  ['status_5foffset_31269',['STATUS_OFFSET',['../status__metadata_8cc.html#ac3959778b8b4ee593c16fa33a06d844c',1,'status_metadata.cc']]],
+  ['stream_5fref_31270',['STREAM_REF',['../inproc__transport_8cc.html#aeb266c334e378e42479291e1aed024c1',1,'inproc_transport.cc']]],
+  ['stream_5fref_5ffrom_5fslice_5fref_31271',['STREAM_REF_FROM_SLICE_REF',['../transport_8cc.html#a8fc5bc40f7bad3a65485c6f8e230f6f4',1,'transport.cc']]],
+  ['stream_5funref_31272',['STREAM_UNREF',['../inproc__transport_8cc.html#a454c23b5de4b9e80e6af08a34564560c',1,'inproc_transport.cc']]],
+  ['strlen_5flit_31273',['STRLEN_LIT',['../hpack__encoder_8cc.html#a4adf5996646225c1109095f57e5054c1',1,'hpack_encoder.cc']]],
+  ['strong_5fref_5fmask_31274',['STRONG_REF_MASK',['../subchannel_8cc.html#a3d021dacad4daa6a3c0982ca517460b7',1,'subchannel.cc']]],
+  ['subchannel_5fcall_5fto_5fcall_5fstack_31275',['SUBCHANNEL_CALL_TO_CALL_STACK',['../subchannel_8cc.html#a6f8f2e93f13638c3344bed1c0a810a90',1,'subchannel.cc']]],
+  ['surplus_5fcapacity_31276',['SURPLUS_CAPACITY',['../error_8cc.html#afdaf7098ba2aee6ea6238fc577094e3f',1,'error.cc']]]
+];

@@ -13,7 +13,7 @@ container engine, BigQuery etc)
 
 internal_ci: Support for running tests on an internal CI platform.
 
-interop_matrix: Scripts to build, upload, and run gRPC clients in docker with various language/runtimes. 
+interop_matrix: Scripts to build, upload, and run gRPC clients in docker with various language/runtimes.
 
 jenkins: Support for running tests on Jenkins.
 

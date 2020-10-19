@@ -1,5 +1,4 @@
-gRPC Wait for Ready Semantics
-=============================
+# gRPC Wait for Ready Semantics
 
 If an RPC is issued but the channel is in `TRANSIENT_FAILURE` or `SHUTDOWN`
 states, the RPC is unable to be transmitted promptly. By default, gRPC

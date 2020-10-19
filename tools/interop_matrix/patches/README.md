@@ -17,13 +17,13 @@ Patch files in this directory are meant to be applied to a git tag
 with a `git apply` command.
 
 1. Under the `patches` directory, create a new subdirectory
-titled `<language>_<git_tag>` for the git tag being modified.
+   titled `<language>_<git_tag>` for the git tag being modified.
 
 2. `git checkout <git_tag>`
 
 3. Make necessary modifications to the git repo at that tag.
 
-4. 
+4.
 
 ```
 git diff > ~/git_repo.patch
@@ -32,7 +32,7 @@ cp ~/git_repo.patch tools/interop_matrix/patches/<language>_<git_tag>/
 ```
 
 5. Edit the `LANGUAGE_RELEASE_MATRIX` in `client_matrix.py` for your language/tag
-and add a `'patch': [<files>,....]` entry to it's `dictionary`.
+   and add a `'patch': [<files>,....]` entry to it's `dictionary`.
 
 After doing this, the interop image creation script can apply that patch to the
 tag with `git apply` before uploading to the test image repo.

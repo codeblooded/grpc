@@ -6,22 +6,20 @@ The definition for an RPC method in proto files contains request message and res
 
 Ideally, the final status of an RPC should be described in the trailing headers of HTTP2, and gRPC Python provides helper functions in `grpcio-status` package to assist the packing and unpacking of error status.
 
-
 ### Requirement
+
 ```
 grpcio>=1.18.0
 grpcio-status>=1.18.0
 googleapis-common-protos>=1.5.5
 ```
 
-
 ### Error Detail Proto
 
 You may provide any custom proto message as error detail in your implementation. Here are protos are defined by Google Cloud Library Team:
 
-* [code.proto]([https://github.com/googleapis/api-common-protos/blob/master/google/rpc/code.proto](https://github.com/googleapis/api-common-protos/blob/87185dfffad4afa5a33a8c153f0e1ea53b4f85dc/google/rpc/code.proto)) contains definition of RPC error codes.
-* [error_details.proto]([https://github.com/googleapis/api-common-protos/blob/master/google/rpc/error_details.proto](https://github.com/googleapis/api-common-protos/blob/87185dfffad4afa5a33a8c153f0e1ea53b4f85dc/google/rpc/error_details.proto)) contains definitions of common error details.
-
+- [code.proto](<[https://github.com/googleapis/api-common-protos/blob/master/google/rpc/code.proto](https://github.com/googleapis/api-common-protos/blob/87185dfffad4afa5a33a8c153f0e1ea53b4f85dc/google/rpc/code.proto)>) contains definition of RPC error codes.
+- [error_details.proto](<[https://github.com/googleapis/api-common-protos/blob/master/google/rpc/error_details.proto](https://github.com/googleapis/api-common-protos/blob/87185dfffad4afa5a33a8c153f0e1ea53b4f85dc/google/rpc/error_details.proto)>) contains definitions of common error details.
 
 ### Definition of Status Proto
 
@@ -94,7 +92,6 @@ message Status {
   repeated google.protobuf.Any details = 3;
 }
 ```
-
 
 ### Usage of Well-Known-Proto `Any`
 

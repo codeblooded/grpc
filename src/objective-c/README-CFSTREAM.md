@@ -1,4 +1,5 @@
 [![Cocoapods](https://img.shields.io/cocoapods/v/gRPC.svg)](https://cocoapods.org/pods/gRPC)
+
 # gRPC Objective-C with CFStream
 
 gRPC now provides the option to use Apple's CFStream API (rather than TCP
@@ -18,12 +19,14 @@ As of v1.23.0, CFStream is enabled by default on iOS for all wrapped languages. 
 disable CFStream in case of a problem.
 
 ## Usage
+
 If you use gRPC on iOS, CFStream is on automatically. If you use it on other
 platforms, you can turn it on with macro `GRPC_CFSTREAM=1` for the pod 'gRPC-Core' and 'gRPC'. In
 case of problem and you want to disable CFStream on iOS, you can set environment variable
-"grpc\_cfstream=0".
+"grpc_cfstream=0".
 
 ## Caveats
+
 It is known to us that the CFStream API has some bug (FB6162039) which will cause gRPC's CFStream
 networking layer to stall occasionally. The issue mostly occur on MacOS systems (including iOS
 simulators on MacOS); iOS may be affected too but we have not seen issue there. gRPC provides a

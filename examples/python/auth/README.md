@@ -27,9 +27,10 @@ the RPC and modify metadata through callback.
 ## About This Example
 
 This example focuses on extending gRPC authentication mechanism:
-1) Customize authentication plugin;
-2) Composite client side credentials;
-3) Validation through interceptor on server side.
+
+1. Customize authentication plugin;
+2. Composite client side credentials;
+3. Validation through interceptor on server side.
 
 ## AuthMetadataPlugin: Manipulate metadata for each call
 
@@ -66,7 +67,6 @@ Then pass the instance of the concrete implementation to
 `CallCredentials` object. Please NOTE that it is possible to pass a Python
 function object directly, but we recommend to inherit from the base class to
 ensure implementation correctness.
-
 
 ```Python
 def metadata_call_credentials(metadata_plugin, name=None):

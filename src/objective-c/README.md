@@ -1,5 +1,7 @@
 [![Cocoapods](https://img.shields.io/cocoapods/v/gRPC.svg)](https://cocoapods.org/pods/gRPC)
+
 # gRPC for Objective-C
+
 gRPC Objective C library provides Objective C API for users to make gRPC calls on iOS or OS X
 platforms. Currently, the minimum supported iOS version is 9.0 and OS X version is 10.10 (Yosemite).
 
@@ -13,17 +15,19 @@ services.
 - [Use the generated library in your code](#use)
 - [Use gRPC without Protobuf](#no-proto)
 - [Alternatives to the steps above](#alternatives)
-    - [Install protoc with the gRPC plugin](#install)
-    - [Install protoc and the gRPC plugin without using Homebrew](#no-homebrew)
-    - [Integrate the generated gRPC library without using Cocoapods](#no-cocoapods)
+  - [Install protoc with the gRPC plugin](#install)
+  - [Install protoc and the gRPC plugin without using Homebrew](#no-homebrew)
+  - [Integrate the generated gRPC library without using Cocoapods](#no-cocoapods)
 
 <a name="write-protos"></a>
+
 ## Write your API declaration in proto format
 
 For this you can consult the [Protocol Buffers][]' official documentation, or learn from a quick
 example [here](https://github.com/grpc/grpc/tree/master/examples#defining-a-service).
 
 <a name="cocoapods"></a>
+
 ## Integrate a proto library in your project
 
 Install [Cocoapods](https://cocoapods.org/#install).
@@ -145,20 +149,24 @@ pod install
 ```
 
 <a name="use"></a>
+
 ## Use the generated library in your code
 
 Please check the [example apps][] for examples of how to use a generated gRPC library.
 
 <a name="no-proto"></a>
+
 ## Use gRPC without Protobuf
 
 This [tests file](https://github.com/grpc/grpc/tree/master/src/objective-c/tests/GRPCClientTests.m)
 shows how to use the generic gRPC Objective-C client without generated protobuf files.
 
 <a name="alternatives"></a>
+
 ## Alternatives to the steps above
 
 <a name="install"></a>
+
 ### Install _protoc_ with the gRPC plugin
 
 Although it's not recommended (because it can lead to hard-to-solve version conflicts), it is
@@ -167,12 +175,15 @@ instead of letting Cocoapods download the appropriate versions for you. To do so
 later, install [homebrew][].
 
 The run the following command to install _protoc_ and the gRPC _protoc_ plugin:
+
 ```sh
 $ curl -fsSL https://goo.gl/getgrpc | bash -
 ```
+
 This will download and run the [gRPC install script][].
 
 <a name="no-homebrew"></a>
+
 ### Install _protoc_ and the gRPC plugin without using Homebrew
 
 First install v3 of the Protocol Buffers compiler (_protoc_), by cloning
@@ -184,14 +195,17 @@ Then clone this repository and execute the following commands from the root dire
 cloned.
 
 Compile the gRPC plugins for _protoc_:
+
 ```sh
 make grpc_objective_c_plugin
 ```
 
 Create a symbolic link to the compiled plugin binary somewhere in your `$PATH`:
+
 ```sh
 ln -s `pwd`/bins/opt/grpc_objective_c_plugin /usr/local/bin/protoc-gen-objcgrpc
 ```
+
 (Notice that the name of the created link must begin with "`protoc-gen-`" for _protoc_ to recognize
 it as a plugin).
 
@@ -200,6 +214,7 @@ appropriate name). Or you might prefer instead to specify the plugin's path as a
 _protoc_, in which case no system modification nor renaming is necessary.
 
 <a name="no-cocoapods"></a>
+
 ### Integrate the generated gRPC library without using Cocoapods
 
 You need to compile the generated `.pbobjc.*` files (the enums and messages) without ARC support,
@@ -210,29 +225,33 @@ runtime library.
 These libraries need to be integrated into your project as described in their respective Podspec
 files:
 
-* [Podspec](https://github.com/grpc/grpc/blob/master/gRPC.podspec) for the Objective-C gRPC runtime
-library. This can be tedious to configure manually.
-* [Podspec](https://github.com/google/protobuf/blob/master/Protobuf.podspec) for the
-Objective-C Protobuf runtime library.
+- [Podspec](https://github.com/grpc/grpc/blob/master/gRPC.podspec) for the Objective-C gRPC runtime
+  library. This can be tedious to configure manually.
+- [Podspec](https://github.com/google/protobuf/blob/master/Protobuf.podspec) for the
+  Objective-C Protobuf runtime library.
 
-[Protocol Buffers]:https://developers.google.com/protocol-buffers/
-[homebrew]:http://brew.sh
-[gRPC install script]:https://raw.githubusercontent.com/grpc/homebrew-grpc/master/scripts/install
-[example Podfile]:https://github.com/grpc/grpc/blob/master/examples/objective-c/helloworld/Podfile
+[protocol buffers]: https://developers.google.com/protocol-buffers/
+[homebrew]: http://brew.sh
+[grpc install script]: https://raw.githubusercontent.com/grpc/homebrew-grpc/master/scripts/install
+[example podfile]: https://github.com/grpc/grpc/blob/master/examples/objective-c/helloworld/Podfile
 [example apps]: https://github.com/grpc/grpc/tree/master/examples/objective-c
 
 ## Use gRPC with OpenSSL
+
 gRPC uses BoringSSL as its dependency, which is a fork of OpenSSL and export a number of symbols
 that are the same as OpenSSL. gRPC avoids conflicts of these symbols by renaming BoringSSL symbols.
 
 If you need gRPC to use OpenSSL instead of BoringSSL (e.g. for the benefit of reducing the binary
 size of your product), you need to make a local `gRPC-Core` podspec and tweak it accordingly:
+
 - Copy the version of `/gRPC-Core.podspec` you wish to use from Github into the repository of your
   app;
 - In your `Podfile`, add the following line:
+
 ```
 pod `gRPC-Core`, :podspec => "." # assuming gRPC-Core.podspec is in the same directory as your Podfile
 ```
+
 - Remove [the
   macro](https://github.com/grpc/grpc/blob/b24b212ee585d376c618235905757b2445ac6461/gRPC-Core.podspec#L186)
   `GRPC_SHADOW_BORINGSSL_SYMBOLS` to disable symbol renaming;
@@ -244,10 +263,13 @@ These steps should allow gRPC to use OpenSSL and drop BoringSSL dependency. If y
 file an issue to us.
 
 ## Upgrade issue with BoringSSL
+
 If you were using an old version of gRPC (<= v1.14) which depended on pod `BoringSSL` rather than
 `BoringSSL-GRPC` and meet issue with the library like:
+
 ```
 ld: framework not found openssl
 ```
+
 updating `-framework openssl` in Other Linker Flags to `-framework openssl_grpc` in your project
 may resolve this issue (see [#16821](https://github.com/grpc/grpc/issues/16821)).

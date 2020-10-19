@@ -9,12 +9,14 @@ See [HelloworldXamarin](/examples/csharp/HelloworldXamarin) for an example how t
 What's currently supported:
 
 Xamarin.Android
-- supported API level: Kitkat 4.4+ (= API level 19)
-- supported ABIs: `armeabi-v7a` (vast majority of Android devices out there), 
-  `arm64-v8a` (some newer Android devices), `x86` (for emulator)
+
+-   supported API level: Kitkat 4.4+ (= API level 19)
+-   supported ABIs: `armeabi-v7a` (vast majority of Android devices out there),
+    `arm64-v8a` (some newer Android devices), `x86` (for emulator)
 
 Xamarin.iOS
-- supported architectures: armv7, arm64 (iPhone 6+) and x86_64 (iPhone simulator)
+
+-   supported architectures: armv7, arm64 (iPhone 6+) and x86_64 (iPhone simulator)
 
 # Unity
 
@@ -34,6 +36,7 @@ How to test gRPC in a Unity project
    You should be able to use gRPC and Protobuf in your scripts from now on.
 
 What's currently bundled in the `grpc_unity_package`
--  Grpc.Core and its dependencies
--  Google.Protobuf
--  Precompiled native libraries for Linux, MacOS, Windows, Android and iOS.
+
+-   Grpc.Core and its dependencies
+-   Google.Protobuf
+-   Precompiled native libraries for Linux, MacOS, Windows, Android and iOS.

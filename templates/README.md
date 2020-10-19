@@ -1,6 +1,7 @@
 # Regenerating project files
 
 Prerequisites
+
 - `python`
 - `pip install mako` (the template processor)
 - `pip install pyyaml` (to read the yaml files)
@@ -19,11 +20,11 @@ was going to single handedly cover all of our usage cases.
 
 So instead we decided to work the following way:
 
-* A `build.yaml` file at the root is the source of truth for listing all the
-targets and files needed to build grpc and its tests, as well as a basic system
-for dependency description.
+- A `build.yaml` file at the root is the source of truth for listing all the
+  targets and files needed to build grpc and its tests, as well as a basic system
+  for dependency description.
 
-* Most of the build systems supported by gRPC (e.g. Makefile, cmake, XCode) have a template defined in this directory. The templates use the information from the `build.yaml` file to generate the project files specific to a given build system.
+- Most of the build systems supported by gRPC (e.g. Makefile, cmake, XCode) have a template defined in this directory. The templates use the information from the `build.yaml` file to generate the project files specific to a given build system.
 
 This way we can maintain as many project system as we see fit, without having
 to manually maintain them when we add or remove new code to the repository.
@@ -92,16 +93,15 @@ dll: "..."                # see below.
 
 Currently, the "`build`" tag have these meanings:
 
-* `"all"`: library to build on `"make all"`, and install on the system.
-* `"protoc"`: a protoc plugin to build on `"make all"` and install on the system.
-* `"private"`: a library to only build for tests.
-* `"test"`: a test binary to run on `"make test"`.
-* `"tool"`: a binary to be built upon `"make tools"`.
+- `"all"`: library to build on `"make all"`, and install on the system.
+- `"protoc"`: a protoc plugin to build on `"make all"` and install on the system.
+- `"private"`: a library to only build for tests.
+- `"test"`: a test binary to run on `"make test"`.
+- `"tool"`: a binary to be built upon `"make tools"`.
 
 All of the targets should always be present in the generated project file, if
 possible and applicable. But the build tag is what should group the targets
 together in a single build command.
-
 
 ## The `"secure"` tag
 
@@ -125,7 +125,6 @@ protobuf is for `"c++"` ones.
 Currently only used by cmake. "true" means the project will be
 built with both static and dynamic runtimes. "false" means it'll only be built
 with static runtime. "only" means it'll only be built with the dll runtime.
-
 
 # The template system
 

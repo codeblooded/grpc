@@ -65,6 +65,7 @@ example server with Server Reflection enabled.
   ```
 
   output:
+
   ```sh
   helloworld.Greeter
   grpc.reflection.v1alpha.ServerReflection
@@ -82,6 +83,7 @@ example server with Server Reflection enabled.
   ```
 
   output:
+
   ```sh
   filename: helloworld.proto
   package: helloworld;
@@ -103,6 +105,7 @@ example server with Server Reflection enabled.
   ```
 
   output:
+
   ```sh
     rpc SayHello(helloworld.HelloRequest) returns (helloworld.HelloReply) {}
   ```
@@ -119,6 +122,7 @@ full name of the type (in the format of \<package\>.\<type\>).
   ```
 
   output:
+
   ```sh
   message HelloRequest {
     optional string name = 1;
@@ -136,6 +140,7 @@ We can send RPCs to a server and get responses using `grpc_cli call` command.
   ```
 
   output:
+
   ```sh
   message: "Hello gRPC CLI"
   ```
@@ -169,7 +174,7 @@ descriptor database.
 
 - Example usage of this descriptor pool
 
-  * Get Service/method descriptors.
+  - Get Service/method descriptors.
 
     ```c++
     const google::protobuf::ServiceDescriptor* service_desc =
@@ -178,7 +183,7 @@ descriptor database.
         desc_pool->FindMethodByName("helloworld.Greeter.SayHello");
     ```
 
-  * Get message type descriptors and create messages dynamically.
+  - Get message type descriptors and create messages dynamically.
 
     ```c++
     const google::protobuf::Descriptor* request_desc =
@@ -186,4 +191,3 @@ descriptor database.
     google::protobuf::DynamicMessageFactory dmf;
     google::protobuf::Message* request = dmf.GetPrototype(request_desc)->New();
     ```
-

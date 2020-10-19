@@ -9,8 +9,8 @@ The code for the xDS test server can be found at:
 
 Server should accept these arguments:
 
-*   --port=PORT
-    *   The port the server will run on.
+- --port=PORT
+  - The port the server will run on.
 
 ## Client
 
@@ -25,22 +25,22 @@ The code for the xDS test client can be at:
 
 Clients should accept these arguments:
 
-*   --fail_on_failed_rpcs=BOOL
-    *   If true, the client should exit with a non-zero return code if any RPCs
-        fail after at least one RPC has succeeded, indicating a valid xDS config
-        was received. This accounts for any startup-related delays in receiving
-        an initial config from the load balancer. Default is false.
-*   --num_channels=CHANNELS
-    *   The number of channels to create to the server.
-*   --qps=QPS
-    *   The QPS per channel.
-*   --server=HOSTNAME:PORT
-    *   The server host to connect to. For example, "localhost:8080"
-*   --stats_port=PORT
-    *   The port for to expose the client's `LoadBalancerStatsService`
-        implementation.
-*   --rpc_timeout_sec=SEC
-    *   The timeout to set on all outbound RPCs. Default is 20.
+- --fail_on_failed_rpcs=BOOL
+  - If true, the client should exit with a non-zero return code if any RPCs
+    fail after at least one RPC has succeeded, indicating a valid xDS config
+    was received. This accounts for any startup-related delays in receiving
+    an initial config from the load balancer. Default is false.
+- --num_channels=CHANNELS
+  - The number of channels to create to the server.
+- --qps=QPS
+  - The QPS per channel.
+- --server=HOSTNAME:PORT
+  - The server host to connect to. For example, "localhost:8080"
+- --stats_port=PORT
+  - The port for to expose the client's `LoadBalancerStatsService`
+    implementation.
+- --rpc_timeout_sec=SEC
+  - The timeout to set on all outbound RPCs. Default is 20.
 
 ## Test Driver
 
@@ -78,7 +78,7 @@ service LoadBalancerStatsService {
 ```
 
 Note that the `LoadBalancerStatsResponse` contains the remote peer distribution
-of the next `num_rpcs` *sent* by the client after receiving the
+of the next `num_rpcs` _sent_ by the client after receiving the
 `LoadBalancerStatsRequest`. It is important that the remote peer distribution be
 recorded for a block of consecutive outgoing RPCs, to validate the intended
 distribution from the load balancer, rather than just looking at the next
@@ -288,7 +288,7 @@ Load balancer configuration:
 Assert:
 
 1. Once all backends receive at least one RPC, the following 1000 RPCs are
-all sent to MIG_a.
+   all sent to MIG_a.
 
 The test driver adds a new MIG with 1 backend, and changes the route action
 to weighted backend services with {a: 20, b: 80}.
@@ -296,7 +296,7 @@ to weighted backend services with {a: 20, b: 80}.
 Assert:
 
 1. Once all backends receive at least one RPC, the following 1000 RPCs are
-distributed across the 2 backends as a: 20, b: 80.
+   distributed across the 2 backends as a: 20, b: 80.
 
 ### gentle_failover
 

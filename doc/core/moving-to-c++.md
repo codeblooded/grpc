@@ -63,6 +63,6 @@ C++ compatible with
 ## Implications for C++ API and wrapped languages
 
 - For C++ structs, switch to `using` when possible (e.g., Slice,
-ByteBuffer, ...)
+  ByteBuffer, ...)
 - The C++ API implementation might directly start using
-`grpc_transport_stream_op_batch` rather than the core surface `grpc_op`.
+  `grpc_transport_stream_op_batch` rather than the core surface `grpc_op`.

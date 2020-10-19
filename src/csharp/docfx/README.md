@@ -1,5 +1,4 @@
-DocFX-generated C# API Reference
---------------------------------
+## DocFX-generated C# API Reference
 
 ## Generating docs manually (on Windows)
 

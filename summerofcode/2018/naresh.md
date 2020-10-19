@@ -127,62 +127,62 @@ bazel test --spawn_strategy=standalone --genrule_strategy=standalone //src/pytho
 ## Useful Bazel flags
 
 - Use `bazel build` with a `-s` flag to see the logs being printed out to
-    standard output while building. 
+  standard output while building.
 - Similarly, use `bazel test` with a `--test_output=streamed` to see the
-    test logs while testing. Something to know while using this flag is that all
-    tests will be run locally, without sharding, one at a time.
+  test logs while testing. Something to know while using this flag is that all
+  tests will be run locally, without sharding, one at a time.
 
 ## Contributions
 
 ### Related to the project
 
 - [435c6f8](https://github.com/grpc/grpc/commit/435c6f8d1e53783ec049b3482445813afd8bc514)
-    Update grpc_gevent cython files to include .pxi
+  Update grpc_gevent cython files to include .pxi
 - [74426fd](https://github.com/grpc/grpc/commit/74426fd2164c51d6754732ebe372133c19ba718c)
-    Add gevent_util.h to grpc_base_c Bazel target
+  Add gevent_util.h to grpc_base_c Bazel target
 - [b6518af](https://github.com/grpc/grpc/commit/b6518afdd610f0115b42aee1ffc71520c6b0d6b1)
-    Upgrade Bazel to 0.15.0
+  Upgrade Bazel to 0.15.0
 - [ebcf04d](https://github.com/grpc/grpc/commit/ebcf04d075333c42979536c5dd2091d363f67e5a)
-    Kokoro setup for building gRPC Python with Bazel
+  Kokoro setup for building gRPC Python with Bazel
 - [3af1aaa](https://github.com/grpc/grpc/commit/3af1aaadabf49bc6274711a11f81627c0f351a9a)
-    Basic setup to build gRPC Python with Bazel
+  Basic setup to build gRPC Python with Bazel
 - [11f199e](https://github.com/grpc/grpc/commit/11f199e34dc416a2bd8b56391b242a867bedade4)
-    Workspace changes to build gRPC Python with Bazel
+  Workspace changes to build gRPC Python with Bazel
 - [848fd9d](https://github.com/grpc/grpc/commit/848fd9d75f6df10f00e8328ff052c0237b3002ab)
-    Minimal Bazel BUILD files for grpcio Python
+  Minimal Bazel BUILD files for grpcio Python
 
 ### Other contibutions
 
 - [89ce16b](https://github.com/grpc/grpc/commit/89ce16b6daaad4caeb1c9ba670c6c4b62ea1a93c)
-    Update Dockerfiles for python artifacts to use latest git version
+  Update Dockerfiles for python artifacts to use latest git version
 - [32f7c48](https://github.com/grpc/grpc/commit/32f7c48dad71cac7af652bf994ab1dde3ddb0607)
-    Revert removals from python artifact dockerfiles
+  Revert removals from python artifact dockerfiles
 - [712eb9f](https://github.com/grpc/grpc/commit/712eb9ff91cde66af94e8381ec01ad512ed6d03c)
-    Make logging after success in jobset more apparent
+  Make logging after success in jobset more apparent
 - [c6e4372](https://github.com/grpc/grpc/commit/c6e4372f8a93bb0eb996b5f202465785422290f2)
-    Create README for gRPC Python reflection package
+  Create README for gRPC Python reflection package
 - [2e113ca](https://github.com/grpc/grpc/commit/2e113ca6b2cc31aa8a9687d40ee1bd759381654f)
-    Update logging in Python to use module-level logger
+  Update logging in Python to use module-level logger
 
 ### Pending PRs
 
 - BUILD files for all tests in
-    [tests.json](https://github.com/ghostwriternr/grpc/blob/70c8a58b2918a5369905e5a203d7ce7897b6207e/src/python/grpcio_tests/tests/tests.json).
+  [tests.json](https://github.com/ghostwriternr/grpc/blob/70c8a58b2918a5369905e5a203d7ce7897b6207e/src/python/grpcio_tests/tests/tests.json).
 - BUILD files for gRPC testing, gRPC health checking, gRPC reflection.
 - (Yet to complete) BUILD files for grpcio_tools. One test depends on this.
 
 ## Known issues
 
 - [grpc/grpc #16336](https://github.com/grpc/grpc/issues/16336) RuntimeError
-    for `_reconnect_test` Python unit test with Bazel
+  for `_reconnect_test` Python unit test with Bazel
 - Some tests in Bazel pass despite throwing an exception. Example:
-    `testAbortedStreamStream` in
-    `src/python/grpcio_tests/tests/unit/_metadata_code_details_test.py`.
+  `testAbortedStreamStream` in
+  `src/python/grpcio_tests/tests/unit/_metadata_code_details_test.py`.
 - [#14557](https://github.com/grpc/grpc/pull/14557) introduced a minor bug
-    where the module level loggers don't initialize a default logging handler.
+  where the module level loggers don't initialize a default logging handler.
 - Sanity test doesn't make sense in the context of Bazel, and thus fails.
 - There are some issues with Python2 vs Python3. Specifically,
-  - On some machines, “cygrpc.so: undefined symbol: _Py_FalseStruct” error
+  - On some machines, “cygrpc.so: undefined symbol: \_Py_FalseStruct” error
     shows up. This is because of incorrect Python version being used to build
     Cython.
   - Some external packages like enum34 throw errors when used with Python 3 and

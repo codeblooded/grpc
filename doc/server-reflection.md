@@ -1,5 +1,4 @@
-GRPC Server Reflection Protocol
-===============================
+# GRPC Server Reflection Protocol
 
 This document describes server reflection as an optional extension for servers
 to assist clients in runtime construction of requests without having stub
@@ -18,10 +17,11 @@ between human readable format and the (likely binary) wire format.
 ## Method reflection
 
 We want to be able to answer the following queries:
- 1. What methods does a server export?
- 2. For a particular method, how do we call it?
-Specifically, what are the names of the methods, are those methods unary or
-streaming, and what are the types of the argument and result?
+
+1.  What methods does a server export?
+2.  For a particular method, how do we call it?
+    Specifically, what are the names of the methods, are those methods unary or
+    streaming, and what are the types of the argument and result?
 
 The first proposed version of the protocol is here:
 https://github.com/grpc/grpc/blob/master/src/proto/grpc/reflection/v1alpha/reflection.proto
@@ -31,11 +31,12 @@ methods it supports. For example, a reverse proxy may support server reflection
 for methods implemented directly on the proxy but not enumerate all methods
 supported by its backends.
 
-
 ### Open questions on method reflection
- * Consider how to extend this protocol to support non-protobuf methods.
+
+- Consider how to extend this protocol to support non-protobuf methods.
 
 ## Argument reflection
+
 The second half of the problem is converting between the human readable
 input/output of a debugging tool and the binary format understood by the
 method.
@@ -60,10 +61,11 @@ exist in C++, Go, and Java.
 
 This protocol mostly returns FileDescriptorProtos, which are a proto encoding
 of a parsed .proto file. It supports four queries:
- 1. The FileDescriptorProto for a given file name
- 2. The FileDescriptorProto for the file with a given symbol
- 3. The FileDescriptorProto for the file with a given extension
- 4. The list of known extension tag numbers of a given type
+
+1.  The FileDescriptorProto for a given file name
+2.  The FileDescriptorProto for the file with a given symbol
+3.  The FileDescriptorProto for the file with a given extension
+4.  The list of known extension tag numbers of a given type
 
 These directly correspond to the methods of
 google::protobuf::DescriptorDatabase. Note that this protocol includes support
@@ -134,15 +136,15 @@ service ProtoDescriptorDatabase {
 ```
 
 Any given request must either result in an error code or an answer, usually in
-the form of a  series of FileDescriptorProtos with the requested file itself
+the form of a series of FileDescriptorProtos with the requested file itself
 and all previously unsent transitive imports of that file. Servers may track
 which FileDescriptorProtos have been sent on a given stream, for a given value
 of valid_host, and avoid sending them repeatedly for overlapping requests.
 
-| message_request message     | Result                                          |
-| --------------------------- | ----------------------------------------------- |
-| files_for_file_name         | transitive closure of file name                 |
-| files_for_symbol_name       | transitive closure file containing symbol       |
+| message_request message     | Result                                                                           |
+| --------------------------- | -------------------------------------------------------------------------------- |
+| files_for_file_name         | transitive closure of file name                                                  |
+| files_for_symbol_name       | transitive closure file containing symbol                                        |
 | file_containing_extension   | transitive closure of file containing a given extension number of a given symbol |
 | list_all_extensions_of_type | ListAllExtensionsResponse containing all known extension numbers of a given type |
 
@@ -152,9 +154,10 @@ protocol even without any such support, by parsing the url and extracting the
 symbol name from it.
 
 ## Language specific implementation thoughts
+
 All of the information needed to implement Proto reflection is available to the
 code generator, but I’m not certain we actually generate this in every
-language. If the proto implementation in the  language doesn’t have something
+language. If the proto implementation in the language doesn’t have something
 like google::protobuf::DescriptorPool the grpc implementation for that language
 will need to index those FileDescriptorProtos by file and symbol and imports.
 

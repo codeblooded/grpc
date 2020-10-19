@@ -8,10 +8,10 @@ the final error.
 
 always present are:
 
-*   GRPC_ERROR_STR_FILE and GRPC_ERROR_INT_FILE_LINE - the source location where
-    the error was generated
-*   GRPC_ERROR_STR_DESCRIPTION - a human readable description of the error
-*   GRPC_ERROR_TIME_CREATED - a timestamp indicating when the error happened
+- GRPC_ERROR_STR_FILE and GRPC_ERROR_INT_FILE_LINE - the source location where
+  the error was generated
+- GRPC_ERROR_STR_DESCRIPTION - a human readable description of the error
+- GRPC_ERROR_TIME_CREATED - a timestamp indicating when the error happened
 
 An error can also have children; these are other errors that are believed to
 have contributed to this one. By accumulating children, we can begin to root
@@ -40,17 +40,17 @@ may explicitly take ownership of it by manually calling GRPC_ERROR_REF.
 
 There are three rules of error ownership, which we will go over in detail.
 
-*   If `grpc_error` is returned by a function, the caller owns a ref to that
-    instance.
-*   If a `grpc_error` is passed to a `grpc_closure` callback function, then that
-    function does not own a ref to the error.
-*   if a `grpc_error` is passed to *any other function*, then that function
-    takes ownership of the error.
+- If `grpc_error` is returned by a function, the caller owns a ref to that
+  instance.
+- If a `grpc_error` is passed to a `grpc_closure` callback function, then that
+  function does not own a ref to the error.
+- if a `grpc_error` is passed to _any other function_, then that function
+  takes ownership of the error.
 
 ### Rule 1
 
 > If `grpc_error` is returned by a function, the caller owns a ref to that
-> instance.*
+> instance.\*
 
 For example, in the following code block, error1 and error2 are owned by the
 current function.
@@ -122,7 +122,7 @@ void on_some_action(grpc_exec_ctx *exec_ctx, void *arg, grpc_error *error) {
 
 ### Rule 3
 
-> if a `grpc_error` is passed to *any other function*, then that function takes
+> if a `grpc_error` is passed to _any other function_, then that function takes
 > ownership of the error.
 
 Take the following example:

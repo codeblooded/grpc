@@ -1,20 +1,17 @@
-gRPC Hostname example (C#)
-========================
+# gRPC Hostname example (C#)
 
-BACKGROUND
--------------
+## BACKGROUND
+
 This is a version of the helloworld example with a server whose response includes its hostname. It also supports health and reflection services. This makes it a good server to test infrastructure, such as XDS load balancing.
 
-PREREQUISITES
--------------
+## PREREQUISITES
 
 - The [.NET Core SDK 2.1+](https://www.microsoft.com/net/core)
 
 You can also build the solution `Greeter.sln` using Visual Studio 2019,
 but it's not a requirement.
 
-RUN THE EXAMPLE
--------------
+## RUN THE EXAMPLE
 
 First, build and run the server, then verify the server is running and
 check the server is behaving as expected (more on that below).
@@ -57,8 +54,7 @@ cd GreeterClient
 dotnet run --server xds-experimental:///my-backend
 ```
 
-VERIFYING THE SERVER
--------------
+## VERIFYING THE SERVER
 
 `grpcurl` can be used to test your server. If you don't have it,
 install [`grpcurl`](https://github.com/fullstorydev/grpcurl/releases). This will allow

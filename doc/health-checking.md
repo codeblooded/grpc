@@ -1,5 +1,4 @@
-GRPC Health Checking Protocol
-================================
+# GRPC Health Checking Protocol
 
 Health checks are used to probe whether the server is able to handle rpcs. The
 client-to-server health checking can happen from point to point or via some
@@ -7,7 +6,6 @@ control system. A server may choose to reply “unhealthy” because it
 is not ready to take requests, it is shutting down or some other reason.
 The client can act accordingly if the response is not received within some time
 window or the response says unhealthy in it.
-
 
 A GRPC service is used as the health checking mechanism for both simple
 client-to-server scenario and other control systems such as load-balancing.
@@ -74,5 +72,5 @@ does not have the Health service.
 
 A client can call the `Watch` method to perform a streaming health-check.
 The server will immediately send back a message indicating the current
-serving status.  It will then subsequently send a new message whenever
+serving status. It will then subsequently send a new message whenever
 the service's serving status changes.

@@ -1,6 +1,6 @@
-##  Data transmission demo for using gRPC in Python
+## Data transmission demo for using gRPC in Python
 
-Four ways of data transmission when gRPC is used in Python.  [Official Guide](<https://grpc.io/docs/guides/concepts/#unary-rpc>)
+Four ways of data transmission when gRPC is used in Python. [Official Guide](https://grpc.io/docs/guides/concepts/#unary-rpc)
 
 - #### unary-unary
 
@@ -28,10 +28,9 @@ Four ways of data transmission when gRPC is used in Python.  [Official Guide](<h
 
 - #### stream-stream
 
-  In a single call, both client and server can send and receive data 
+  In a single call, both client and server can send and receive data
   to each other multiple times.
 
   `client.py: bidirectional_streaming_method`
 
   `server.py: BidirectionalStreamingMethod`
-

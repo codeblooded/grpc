@@ -1,5 +1,4 @@
-Connection Backoff Interop Test Descriptions
-===============================================
+# Connection Backoff Interop Test Descriptions
 
 This test is to verify the client is reconnecting the server with correct
 backoffs as specified in
@@ -12,24 +11,24 @@ The test has the following flow:
 2. The client calls Start rpc on server control_port.
 3. The server starts listening on retry_port.
 4. The client connects to server retry_port and retries with backoff for 540s,
-which translates to about 13 retries.
+   which translates to about 13 retries.
 5. The client calls Stop rpc on server control port.
 6. The client checks the response to see whether the server thinks the backoffs
-are conforming the spec or do its own check on the backoffs in the response.
+   are conforming the spec or do its own check on the backoffs in the response.
 
 Client and server use
 [test.proto](https://github.com/grpc/grpc/blob/master/src/proto/grpc/testing/test.proto).
 Each language should implement its own client. The C++ server is shared among
 languages.
 
-Client
-------
+## Client
 
 Clients should accept these arguments:
-* --server_control_port=PORT
-    * The server port to connect to for rpc. For example, "8080"
-* --server_retry_port=PORT
-    * The server port to connect to for testing backoffs. For example, "8081"
+
+- --server_control_port=PORT
+  - The server port to connect to for rpc. For example, "8080"
+- --server_retry_port=PORT
+  - The server port to connect to for testing backoffs. For example, "8081"
 
 The client must connect to the control port without TLS. The client must connect
 to the retry port with TLS. The client should either assert on the server
@@ -38,18 +37,16 @@ returned backoff status or check the returned backoffs on its own.
 Procedure of client:
 
 1. Calls Start on server control port with a large deadline or no deadline,
-waits for its finish and checks it succeeded.
+   waits for its finish and checks it succeeded.
 2. Initiates a channel connection to server retry port, which should perform
-reconnections with proper backoffs. A convenient way to achieve this is to
-call Start with a deadline of 540s. The rpc should fail with deadline exceeded.
+   reconnections with proper backoffs. A convenient way to achieve this is to
+   call Start with a deadline of 540s. The rpc should fail with deadline exceeded.
 3. Calls Stop on server control port and checks it succeeded.
 4. Checks the response to see whether the server thinks the backoffs passed the
    test.
 5. Optionally, the client can do its own check on the returned backoffs.
 
-
-Server
-------
+## Server
 
 A C++ server can be used for the test. Other languages do NOT need to implement
 a server. To minimize the network delay, the server binary should run on the
@@ -70,8 +67,7 @@ error but likely would think the client fails the test.
 
 The server accepts these arguments:
 
-* --control_port=PORT
-    * The port to listen on for control rpcs. For example, "8080"
-* --retry_port=PORT
-    * The tcp server port. For example, "8081"
-
+- --control_port=PORT
+  - The port to listen on for control rpcs. For example, "8080"
+- --retry_port=PORT
+  - The tcp server port. For example, "8081"

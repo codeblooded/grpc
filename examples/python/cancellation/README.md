@@ -51,7 +51,6 @@ We also call `sys.exit(0)` to terminate the process. If we do not do this, then
 `future.result()` with throw an `RpcError`. Alternatively, you may catch this
 exception.
 
-
 ##### Cancelling a Server-Side Streaming RPC from the Client
 
 Cancelling a Server-side streaming RPC is even simpler from the perspective of
@@ -73,7 +72,6 @@ for result in result_generator:
 We also call `sys.exit(0)` here to terminate the process. Alternatively, you may
 catch the `RpcError` raised by the for loop upon cancellation.
 
-
 #### Cancellation on the Server Side
 
 A server is responsible for cancellation in two ways. It must respond in some way
@@ -87,7 +85,7 @@ been computed in order to conserve compute resources.
 ##### Responding to Cancellations from a Servicer Thread
 
 It's important to remember that a gRPC Python server is backed by a thread pool
-with a fixed size. When an RPC is cancelled, the library does *not* terminate
+with a fixed size. When an RPC is cancelled, the library does _not_ terminate
 your servicer thread. It is your responsibility as the application author to
 ensure that your servicer thread terminates soon after the RPC has been
 cancelled.

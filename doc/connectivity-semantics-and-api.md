@@ -1,11 +1,9 @@
-gRPC Connectivity Semantics and API
-===================================
+# gRPC Connectivity Semantics and API
 
 This document describes the connectivity semantics for gRPC channels and the
 corresponding impact on RPCs. We then discuss an API.
 
-States of Connectivity
-----------------------
+## States of Connectivity
 
 gRPC Channels provide the abstraction over which clients can communicate with
 servers.The client-side channel object can be constructed using little more
@@ -39,7 +37,7 @@ because the server is not yet available), the channel may spend increasingly
 large amounts of time in this state.
 
 IDLE: This is the state where the channel is not even trying to create a
-connection because of a lack of new or pending RPCs. New RPCs  MAY be created
+connection because of a lack of new or pending RPCs. New RPCs MAY be created
 in this state. Any attempt to start an RPC on the channel will push the channel
 out of this state to connecting. When there has been no RPC activity on a channel
 for a specified IDLE_TIMEOUT, i.e., no new or pending (active) RPCs for this
@@ -53,7 +51,7 @@ immediately. Pending RPCs may continue running till the application cancels them
 Channels may enter this state either because the application explicitly requested
 a shutdown or if a non-recoverable error has happened during attempts to connect
 communicate . (As of 6/12/2015, there are no known errors (while connecting or
-communicating) that are classified as non-recoverable.)  Channels that enter this
+communicating) that are classified as non-recoverable.) Channels that enter this
 state never leave this state.
 
 The following table lists the legal transitions from one state to another and
@@ -111,9 +109,7 @@ corresponding reasons. Empty cells denote disallowed transitions.
   </tr>
 </table>
 
-
-Channel State API
------------------
+## Channel State API
 
 All gRPC libraries will expose a channel-level API method to poll the current
 state of a channel. In C++, this method is called GetState and returns an enum
@@ -143,7 +139,7 @@ APIs should have a corresponding method that allows the application to be
 notified when the state of a channel changes.
 
 Note that a notification is delivered every time there is a transition from any
-state to any *other* state. On the other hand the rules for legal state
+state to any _other_ state. On the other hand the rules for legal state
 transition, require a transition from CONNECTING to TRANSIENT_FAILURE and back
 to CONNECTING for every recoverable failure, even if the corresponding
 exponential backoff requires no wait before retry. The combined effect is that

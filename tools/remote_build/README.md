@@ -7,13 +7,11 @@ Note that this will only work for gRPC team members (it requires access to the
 remote build and execution cluster), others will need to rely on local test runs
 and tests run by Kokoro CI.
 
-
 ## Prerequisites
 
 - See [Installing Bazel](https://docs.bazel.build/versions/master/install.html) for instructions how to install bazel on your system.
 
 - Setup application default credentials for running remote builds by following the ["Set credentials" section](https://cloud.google.com/remote-build-execution/docs/results-ui/getting-started-results-ui). (Note: for the ResultStore UI upload to work, you'll need a special kind of application default credentials, so if the build event upload doesn't work, doublecheck the instructions)
-
 
 ## Running remote build manually from dev workstation
 
@@ -22,12 +20,14 @@ IMPORTANT: The OS from which you run the bazel command needs to always match you
 ### Linux
 
 For `opt` or `dbg` run this command:
+
 ```
 # manual run of bazel tests remotely on Foundry
 bazel --bazelrc=tools/remote_build/manual.bazelrc test --config=opt //test/...
 ```
 
 This also works for sanitizer runs (`asan`, `msan`, `tsan`, `ubsan`):
+
 ```
 # manual run of bazel tests remotely on Foundry with given sanitizer
 bazel --bazelrc=tools/remote_build/manual.bazelrc test --config=asan //test/...
@@ -60,7 +60,7 @@ NOTE: Because this is essentially a local run, you'll need to run start port ser
 
 ## Running local builds with bazel
 
-On all platforms, you can generally still use bazel builds & tests locally without any extra settings, but you might need to 
+On all platforms, you can generally still use bazel builds & tests locally without any extra settings, but you might need to
 start port server first (`tools/run_tests/start_port_server.py`) to be able to run the tests locally.
 
 E.g.: `bazel test --config=opt //test/...`

@@ -1,4 +1,3 @@
-
 # Overview
 
 This directory contains source code for PHP implementation of gRPC layered on
@@ -11,17 +10,17 @@ gRPC PHP installation instructions for Google Cloud Platform is in
 
 ### Prerequisites
 
-* `php`: version 7.0 or above (PHP 5.x support is deprecated from Sep 2020).
-* `pecl`
-* `composer`
-* `phpunit` (optional)
-
+- `php`: version 7.0 or above (PHP 5.x support is deprecated from Sep 2020).
+- `pecl`
+- `composer`
+- `phpunit` (optional)
 
 ## Install the _grpc_ extension
 
 There are two ways to install the `grpc` extension.
-* Via `pecl`
-* Build from source
+
+- Via `pecl`
+- Build from source
 
 ### Install from PECL
 
@@ -37,7 +36,6 @@ $ [sudo] pecl install grpc-1.30.0
 
 Please make sure your `gcc` version satisfies the minimum requirement as
 specified [here](https://grpc.io/docs/languages/#official-support).
-
 
 ### Install on Windows
 
@@ -78,7 +76,6 @@ This will compile and install the `grpc` extension into the
 standard PHP extension directory. You should be able to run
 the [unit tests](#unit-tests), with the `grpc` extension installed.
 
-
 ### Update php.ini
 
 After installing the `grpc` extension, make sure you add this line to your
@@ -110,11 +107,11 @@ gRPC PHP supports
 [protocol buffers](https://developers.google.com/protocol-buffers)
 out-of-the-box. You will need the following things to get started:
 
-* `protoc`: the protobuf compiler binary to generate PHP classes for your
-messages and service definition.
-* `grpc_php_plugin`: a plugin for `protoc` to generate the service stub
-classes.
-* `protobuf.so`: the `protobuf` extension runtime library.
+- `protoc`: the protobuf compiler binary to generate PHP classes for your
+  messages and service definition.
+- `grpc_php_plugin`: a plugin for `protoc` to generate the service stub
+  classes.
+- `protobuf.so`: the `protobuf` extension runtime library.
 
 ### `protoc` compiler
 
@@ -127,18 +124,18 @@ the version of grpc inside package.xml file.
 The compatibility between the grpc and protobuf version is listed as table
 below:
 
-grpc | protobuf | grpc | protobuf | grpc | protobuf
---- | --- | --- | --- | --- | ---
-v1.0.0 | 3.0.0(GA) | v1.12.0 | 3.5.2 | v1.22.0 | 3.8.0
-v1.0.1 | 3.0.2 | v1.13.1 | 3.5.2 | v1.23.1 | 3.8.0
-v1.1.0 | 3.1.0  | v1.14.2 | 3.5.2 | v1.24.0 | 3.8.0
-v1.2.0 | 3.2.0  | v1.15.1 | 3.6.1 | v1.25.0 | 3.8.0
-v1.2.0 | 3.2.0  | v1.16.1 | 3.6.1 | v1.26.0 | 3.8.0
-v1.3.4 | 3.3.0  | v1.17.2 | 3.6.1 | v1.27.3 | 3.11.2
-v1.3.5 | 3.2.0 | v1.18.0 | 3.6.1 | v1.28.1 | 3.11.2
-v1.4.0 | 3.3.0  | v1.19.1 | 3.6.1 | v1.29.0 | 3.11.2
-v1.6.0 | 3.4.0 | v1.20.1 | 3.7.0 | v1.30.0 | 3.12.2
-v1.8.0 | 3.5.0 | v1.21.3 | 3.7.0
+| grpc   | protobuf  | grpc    | protobuf | grpc    | protobuf |
+| ------ | --------- | ------- | -------- | ------- | -------- |
+| v1.0.0 | 3.0.0(GA) | v1.12.0 | 3.5.2    | v1.22.0 | 3.8.0    |
+| v1.0.1 | 3.0.2     | v1.13.1 | 3.5.2    | v1.23.1 | 3.8.0    |
+| v1.1.0 | 3.1.0     | v1.14.2 | 3.5.2    | v1.24.0 | 3.8.0    |
+| v1.2.0 | 3.2.0     | v1.15.1 | 3.6.1    | v1.25.0 | 3.8.0    |
+| v1.2.0 | 3.2.0     | v1.16.1 | 3.6.1    | v1.26.0 | 3.8.0    |
+| v1.3.4 | 3.3.0     | v1.17.2 | 3.6.1    | v1.27.3 | 3.11.2   |
+| v1.3.5 | 3.2.0     | v1.18.0 | 3.6.1    | v1.28.1 | 3.11.2   |
+| v1.4.0 | 3.3.0     | v1.19.1 | 3.6.1    | v1.29.0 | 3.11.2   |
+| v1.6.0 | 3.4.0     | v1.20.1 | 3.7.0    | v1.30.0 | 3.12.2   |
+| v1.8.0 | 3.5.0     | v1.21.3 | 3.7.0    |
 
 If `protoc` hasn't been installed, you can download the `protoc` binary from
 the protocol buffers
@@ -202,12 +199,13 @@ while the native implementation is easier to install.
 
 Install the `protobuf` extension from PECL:
 
-``` sh
+```sh
 $ [sudo] pecl install protobuf
 ```
+
 or specific version
 
-``` sh
+```sh
 $ [sudo] pecl install protobuf-3.12.2
 ```
 
@@ -269,7 +267,6 @@ Install the runtime dependencies via `composer install`.
 $ cd grpc/src/php
 $ composer install
 ```
-
 
 ### Client Stub
 
@@ -340,10 +337,12 @@ grpc.log_filename=/var/log/grpc.log
 ```
 
 > Make sure the log file above is writable, by doing the following:
+>
 > ```
 > $ sudo touch /var/log/grpc.log
 > $ sudo chmod 666 /var/log/grpc.log
 > ```
+>
 > Note: The log file does grow pretty quickly depending on how much logs are
 > being printed out. Make sure you have other mechanisms (perhaps another
 > cronjob) to zero out the log file from time to time,

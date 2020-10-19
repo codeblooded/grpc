@@ -1,17 +1,16 @@
-
 # μpb - a small protobuf implementation in C
 
-|Platform|Build Status|
-|--------|------------|
-|macOS|[![Build Status](https://storage.googleapis.com/upb-kokoro-results/status-badge/macos.png)](https://fusion.corp.google.com/projectanalysis/summary/KOKORO/prod%3Aupb%2Fmacos%2Fcontinuous)|
-|ubuntu|[![Build Status](https://storage.googleapis.com/upb-kokoro-results/status-badge/ubuntu.png)](https://fusion.corp.google.com/projectanalysis/summary/KOKORO/prod%3Aupb%2Fubuntu%2Fcontinuous)|
+| Platform | Build Status                                                                                                                                                                                 |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| macOS    | [![Build Status](https://storage.googleapis.com/upb-kokoro-results/status-badge/macos.png)](https://fusion.corp.google.com/projectanalysis/summary/KOKORO/prod%3Aupb%2Fmacos%2Fcontinuous)   |
+| ubuntu   | [![Build Status](https://storage.googleapis.com/upb-kokoro-results/status-badge/ubuntu.png)](https://fusion.corp.google.com/projectanalysis/summary/KOKORO/prod%3Aupb%2Fubuntu%2Fcontinuous) |
 
 μpb (often written 'upb') is a small protobuf implementation written in C.
 
 upb generates a C API for creating, parsing, and serializing messages
-as declared in `.proto` files.  upb is heavily arena-based: all
+as declared in `.proto` files. upb is heavily arena-based: all
 messages always live in an arena (note: the arena can live in stack or
-static memory if desired).  Here is a simple example:
+static memory if desired). Here is a simple example:
 
 ```c
 #include "conformance/conformance.upb.h"
@@ -51,7 +50,7 @@ void foo(const char* data, size_t size) {
 }
 ```
 
-API and ABI are both subject to change!  Please do not distribute
+API and ABI are both subject to change! Please do not distribute
 as a shared library for this reason (for now at least).
 
 ## Using upb in your project
@@ -61,7 +60,7 @@ but full CMake support is an eventual goal).
 
 To use upb in your Bazel project, first add upb to your `WORKSPACE` file,
 either as a `git_repository()` or as a `new_local_repository()` with a
-Git Submodule.  (For an example, see `examples/bazel/ in this repo).
+Git Submodule. (For an example, see `examples/bazel/ in this repo).
 
 ```python
 # Add this to your WORKSPACE file.
@@ -79,7 +78,7 @@ upb_deps()
 ```
 
 Then in your BUILD file you can add `upb_proto_library()` rules that
-generate code for a corresponding `proto_library()` rule.  For
+generate code for a corresponding `proto_library()` rule. For
 example:
 
 ```python
@@ -114,18 +113,18 @@ Then in your `.c` file you can #include the generated header:
 ## Old "handlers" interfaces
 
 This library contains several semi-deprecated interfaces (see BUILD
-file for more info about which interfaces are deprecated).  These
+file for more info about which interfaces are deprecated). These
 deprecated interfaces are still used in some significant projects,
 such as the Ruby and PHP C bindings for protobuf in the [main protobuf
-repo](https://github.com/protocolbuffers/protobuf).  The goal is to
+repo](https://github.com/protocolbuffers/protobuf). The goal is to
 migrate the Ruby/PHP bindings to use the newer, simpler interfaces
-instead.  Please do not use the old interfaces in new code.
+instead. Please do not use the old interfaces in new code.
 
 ## Lua bindings
 
-This repo has some Lua bindings for the core library.  These are
-experimental and very incomplete.  These are currently included in
-order to validate that the C API is suitable for wrapping.  As the
+This repo has some Lua bindings for the core library. These are
+experimental and very incomplete. These are currently included in
+order to validate that the C API is suitable for wrapping. As the
 project matures these Lua bindings may become publicly available.
 
 ## Contact

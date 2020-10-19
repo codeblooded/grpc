@@ -12,6 +12,7 @@ the [grpcio-reflection] PyPI package into your project.
 Note that with Python you need to manually register the service
 descriptors with the reflection service implementation when creating a server
 (this isn't necessary with e.g. C++ or Java)
+
 ```python
 # add the following import statement to use server reflection
 from grpc_reflection.v1alpha import reflection
@@ -35,19 +36,20 @@ example, which extends the gRPC [Python `Greeter` example] on a reflection-enabl
 After starting the server, you can verify that the server reflection
 is working properly by using the [`grpc_cli` command line tool]:
 
- ```sh
-  $ grpc_cli ls localhost:50051
-  ```
+```sh
+ $ grpc_cli ls localhost:50051
+```
 
-  output:
-  ```sh
-  grpc.reflection.v1alpha.ServerReflection
-  helloworld.Greeter
-  ```
+output:
 
-  For more examples and instructions how to use the `grpc_cli` tool,
-  please refer to the [`grpc_cli` documentation] and the
-  [C++ Server Reflection Tutorial].
+```sh
+grpc.reflection.v1alpha.ServerReflection
+helloworld.Greeter
+```
+
+For more examples and instructions how to use the `grpc_cli` tool,
+please refer to the [`grpc_cli` documentation] and the
+[C++ Server Reflection Tutorial].
 
 ## Additional Resources
 
@@ -55,12 +57,11 @@ The [Server Reflection Protocol] provides detailed
 information about how the server reflection works and describes the server reflection
 protocol in detail.
 
-
-[C++ Server Reflection Tutorial]: ../server_reflection_tutorial.md
+[c++ server reflection tutorial]: ../server_reflection_tutorial.md
 [grpcio-reflection]: https://pypi.org/project/grpcio-reflection/
 [greeter_server_with_reflection.py]: https://github.com/grpc/grpc/blob/master/examples/python/helloworld/greeter_server_with_reflection.py
-[Python `Greeter` example]: https://github.com/grpc/grpc/tree/master/examples/python/helloworld
+[python `greeter` example]: https://github.com/grpc/grpc/tree/master/examples/python/helloworld
 [`grpc_cli` command line tool]: https://github.com/grpc/grpc/blob/master/doc/command_line_tool.md
 [`grpc_cli` documentation]: ../command_line_tool.md
-[C++ Server Reflection Tutorial]: ../server_reflection_tutorial.md
-[Server Reflection Protocol]: ../server-reflection.md
+[c++ server reflection tutorial]: ../server_reflection_tutorial.md
+[server reflection protocol]: ../server-reflection.md

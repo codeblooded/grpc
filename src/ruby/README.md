@@ -4,13 +4,11 @@ gRPC Ruby
 
 A Ruby implementation of gRPC.
 
-PREREQUISITES
--------------
+## PREREQUISITES
 
 - Ruby 2.x. The gRPC API uses keyword args.
 
-INSTALLATION
----------------
+## INSTALLATION
 
 **Linux and Mac OS X:**
 
@@ -18,8 +16,8 @@ INSTALLATION
 gem install grpc
 ```
 
-BUILD FROM SOURCE
----------------------
+## BUILD FROM SOURCE
+
 - Clone this repository
 
 - Init submodules
@@ -30,6 +28,7 @@ git submodule update --init
 
 - Install Ruby 2.x. Consider doing this with [RVM](http://rvm.io), it's a nice way of controlling
   the exact ruby version that's used.
+
 ```sh
 $ command curl -sSL https://rvm.io/mpapis.asc | gpg --import -
 $ \curl -sSL https://get.rvm.io | bash -s stable --ruby=ruby-2
@@ -37,28 +36,32 @@ $
 $ # follow the instructions to ensure that your're using the latest stable version of Ruby
 $ # and that the rvm command is installed
 ```
+
 - Make sure your run `source $HOME/.rvm/scripts/rvm` as instructed to complete the set up of RVM
 
 - Install [bundler](http://bundler.io/)
+
 ```
 $ gem install bundler
 ```
 
-- Finally,  build and install the gRPC gem locally.
+- Finally, build and install the gRPC gem locally.
+
 ```sh
 $ # from this directory
 $ bundle install  # creates the ruby bundle, including building the grpc extension
 $ rake  # runs the unit tests, see rake -T for other options
 ```
 
-DOCUMENTATION
--------------
+## DOCUMENTATION
+
 - rubydoc for the gRPC gem is available online at [rubydoc][].
 - the gRPC Ruby reference documentation is available online at [grpc.io][]
 
-CONTENTS
---------
+## CONTENTS
+
 Directory structure is the layout for [ruby extensions][]
+
 - ext: the gRPC ruby extension
 - lib: the entrypoint gRPC ruby library to be used in a 'require' statement
 - spec: Rspec unittests
@@ -72,7 +75,7 @@ Directory structure is the layout for [ruby extensions][]
   GRPC.logger.info("Answer: #{resp.inspect}")
   ```
 
-[ruby extensions]:http://guides.rubygems.org/gems-with-extensions/
+[ruby extensions]: http://guides.rubygems.org/gems-with-extensions/
 [rubydoc]: http://www.rubydoc.info/gems/grpc
 [grpc.io]: https://grpc.io/docs/languages/ruby/quickstart
-[Debian jessie-backports]:http://backports.debian.org/Instructions/
+[debian jessie-backports]: http://backports.debian.org/Instructions/

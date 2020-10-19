@@ -1,17 +1,14 @@
-gRPC C# on Unity
-========================
+# gRPC C# on Unity
 
-EXPERIMENTAL ONLY
--------------
+## EXPERIMENTAL ONLY
+
 Support of the Unity platform is currently experimental.
 
-PREREQUISITES
--------------
+## PREREQUISITES
 
 - Unity 2018.3.5f1
 
-BUILD
--------
+## BUILD
 
 - Follow instructions in https://github.com/grpc/grpc/tree/master/src/csharp/experimental#unity to obtain the grpc_csharp_unity.zip
   that contains gRPC C# for Unity. Unzip it under `Assets/Plugins` directory.

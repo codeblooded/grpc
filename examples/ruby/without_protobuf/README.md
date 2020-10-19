@@ -1,5 +1,4 @@
-gRPC (Ruby) without protobuf
-========================
+# gRPC (Ruby) without protobuf
 
 This directory contains a simple example of using gRPC without protobuf.
 

@@ -1,4 +1,5 @@
 # Combiner Explanation
+
 ## Talk by ctiller, notes by vjpai
 
 Typical way of doing critical section
@@ -32,10 +33,11 @@ The implementation described above has the issue that you're blocking a thread
 for a period of time, and this is considered harmful because it's an application thread that you're blocking.
 
 Instead, get a new property:
-* Keep things running in serial execution
-* Don't ever sleep the thread
-* But maybe allow things to end up running on a different thread from where they were started
-* This means that `do_stuff` doesn't necessarily run to completion when `combiner.run` is invoked
+
+- Keep things running in serial execution
+- Don't ever sleep the thread
+- But maybe allow things to end up running on a different thread from where they were started
+- This means that `do_stuff` doesn't necessarily run to completion when `combiner.run` is invoked
 
 ```
 class combiner {
@@ -155,4 +157,3 @@ In principle, `run_finally` could get starved, but this hasn't
 happened in practice. If we were concerned about this, we could put a
 limit on how many things come off the regular `q` before the `finally`
 queue gets processed.
-
