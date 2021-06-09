@@ -36,7 +36,7 @@ kubectl get pods | grep -v Completed
 # BEGIN differentiate experimental configuration from master configuration.
 LOAD_TEST_PREFIX="${KOKORO_BUILD_INITIATOR}"
 if [[ "${KOKORO_BUILD_INITIATOR}" == kokoro ]]; then
-    LOAD_TEST_PREFIX=kokoro-test
+    LOAD_TEST_PREFIX=benreed-kokoro-test
 fi
 BIGQUERY_TABLE_8CORE=e2e_benchmarks.experimental_results
 BIGQUERY_TABLE_32CORE=e2e_benchmarks.experimental_results_32core
@@ -55,8 +55,9 @@ GRPC_JAVA_GITREF="$(git ls-remote https://github.com/grpc/grpc-java.git master |
 
 # Clone test-infra repository to one upper level directory than grpc.
 pushd ..
-git clone --recursive https://github.com/grpc/test-infra.git
+git clone --recursive https://github.com/codeblooded/test-infra.git
 cd test-infra
+git checkout junit-reports
 go build -o bin/runner cmd/runner/main.go
 go build -o bin/prepare_prebuilt_workers tools/prepare_prebuilt_workers/prepare_prebuilt_workers.go
 go build -o bin/delete_prebuilt_workers tools/delete_prebuilt_workers/delete_prebuilt_workers.go
@@ -80,9 +81,9 @@ buildConfigs() {
         -o "./loadtest_with_prebuilt_workers_${pool}.yaml"
 }
 
-buildConfigs workers-8core "${BIGQUERY_TABLE_8CORE}" -l c++ -l csharp -l go -l java -l python -l ruby
+buildConfigs workers-8core "${BIGQUERY_TABLE_8CORE}" -l go
 
-buildConfigs workers-32core "${BIGQUERY_TABLE_32CORE}" -l c++ -l csharp -l go -l java
+buildConfigs workers-32core "${BIGQUERY_TABLE_32CORE}" -l go
 
 # Delete prebuilt images on exit.
 deleteImages() {
@@ -109,4 +110,7 @@ time ../test-infra/bin/prepare_prebuilt_workers \
 time ../test-infra/bin/runner \
     -i ../grpc/loadtest_with_prebuilt_workers_workers-8core.yaml \
     -i ../grpc/loadtest_with_prebuilt_workers_workers-32core.yaml \
-    -c workers-8core:2 -c workers-32core:2
+    -c workers-8core:2 -c workers-32core:2 \
+    -o sponge_log.xml
+    -output-test-suite "grpc-e2e-performance-v2"
+

@@ -45,12 +45,10 @@ spec:
           - bazel-bin/test/cpp/qps/qps_worker
     - build:
         args:
-          - build
-          - -o
-          - /src/workspace/bin/worker
-          - ./benchmark/worker
+          - -c
+          - exit 127
         command:
-          - go
+          - bash
       clone:
         gitRef: master
         repo: https://github.com/grpc/grpc-go.git

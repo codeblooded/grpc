@@ -33,7 +33,10 @@ spec:
       pool: ${client_pool}
       run:
         command:
-          - /executable/bin/worker
+          - bash
+        args:
+          - -c
+          - exit 127
         image: ${prebuilt_image_prefix}/go:${prebuilt_image_tag}
     - language: java
       pool: ${client_pool}
